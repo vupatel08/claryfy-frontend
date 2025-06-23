@@ -1,0 +1,234 @@
+@import "tailwindcss";
+
+body {
+  background: #ffffff;
+  color: #000000;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Force all text to be black with high specificity */
+*,
+*::before,
+*::after,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+span,
+div,
+a,
+button,
+.text-white,
+.text-gray-100,
+.text-gray-200,
+.text-gray-300,
+.text-gray-400,
+.text-gray-500,
+.text-gray-600,
+.text-gray-700,
+.text-gray-800,
+.text-gray-900,
+.text-blue-600,
+.text-green-600,
+.text-red-600,
+.text-yellow-600,
+.text-purple-600,
+.text-indigo-600 {
+  color: #000000 !important;
+}
+
+/* Force buttons and interactive elements to have black text */
+button,
+.bg-green-500,
+.bg-green-600,
+.bg-green-700,
+.bg-blue-500,
+.bg-blue-600,
+.bg-red-500,
+.bg-red-600 {
+  color: #000000 !important;
+}
+
+/* Force tab navigation text to be black */
+nav button,
+nav a,
+.tab-button,
+[role="tab"],
+[role="button"] {
+  color: #000000 !important;
+}
+
+/* Force all sidebar text to be black */
+.sidebar *,
+.sidebar-content *,
+aside *,
+aside button,
+aside a,
+aside span,
+aside div {
+  color: #000000 !important;
+}
+
+/* Target specific problematic classes */
+.hover\:text-white:hover,
+.focus\:text-white:focus,
+.active\:text-white:active,
+.text-white\/75,
+.text-white\/50,
+.text-slate-100,
+.text-slate-200,
+.text-slate-300,
+.text-zinc-100,
+.text-zinc-200,
+.text-zinc-300,
+.text-neutral-100,
+.text-neutral-200,
+.text-neutral-300 {
+  color: #000000 !important;
+}
+
+/* Force X button and close buttons to be black */
+.close-button,
+.close-btn,
+button[aria-label*="close"],
+button[aria-label*="Close"],
+[data-close],
+.text-lg,
+.font-bold {
+  color: #000000 !important;
+}
+
+/* Override any remaining white text in specific components */
+.bg-red-50 {
+  color: #000000 !important;
+}
+
+/* Prose styling for rich text content */
+.prose {
+  max-width: none;
+}
+
+.prose p {
+  margin-bottom: 1em;
+  color: #000000 !important;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+  color: #000000 !important;
+  font-weight: bold;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.prose h1 {
+  font-size: 1.875em;
+}
+
+.prose h2 {
+  font-size: 1.5em;
+}
+
+.prose h3 {
+  font-size: 1.25em;
+}
+
+.prose h4 {
+  font-size: 1.125em;
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 1.5em;
+  margin-bottom: 1em;
+  color: #000000 !important;
+}
+
+.prose li {
+  margin-bottom: 0.5em;
+  color: #000000 !important;
+}
+
+.prose a {
+  color: #2563eb !important;
+  text-decoration: underline;
+}
+
+.prose a:hover {
+  color: #1d4ed8 !important;
+}
+
+.prose strong,
+.prose b {
+  font-weight: bold;
+  color: #000000 !important;
+}
+
+.prose em,
+.prose i {
+  font-style: italic;
+  color: #000000 !important;
+}
+
+.prose blockquote {
+  border-left: 4px solid #e5e7eb;
+  padding-left: 1em;
+  margin: 1em 0;
+  font-style: italic;
+  color: #000000 !important;
+}
+
+.prose code {
+  background-color: #f3f4f6;
+  padding: 0.2em 0.4em;
+  border-radius: 0.25em;
+  font-family: 'Courier New', monospace;
+  color: #000000 !important;
+}
+
+.prose pre {
+  background-color: #f3f4f6;
+  padding: 1em;
+  border-radius: 0.5em;
+  overflow-x: auto;
+  color: #000000 !important;
+}
+
+.prose img {
+  max-width: 100%;
+  height: auto;
+  margin: 1em 0;
+}
+
+/* Hide Next.js development overlays and assistive touch buttons */
+#__next-dev-overlay-error-toast,
+#__next-dev-overlay-build-error,
+[data-nextjs-toast],
+[data-nextjs-dialog-overlay],
+[data-nextjs-dialog],
+.__next-dev-overlay,
+.__next-dev-overlay-error-toast,
+.__next-dev-overlay-build-error {
+  display: none !important;
+}
+
+/* Hide any floating development buttons */
+button[style*="position: fixed"],
+div[style*="position: fixed"][style*="z-index: 99999"],
+div[style*="position: fixed"][style*="bottom: 20px"],
+div[style*="position: fixed"][style*="right: 20px"] {
+  display: none !important;
+}
+
+/* Hide Vercel speed insights and analytics overlays */
+[data-vercel-speed-insights],
+[data-vercel-analytics] {
+  display: none !important;
+}
