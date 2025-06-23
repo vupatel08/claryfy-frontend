@@ -19,16 +19,6 @@ export default function Dashboard() {
   const [showTokenHelp, setShowTokenHelp] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingStep, setLoadingStep] = useState('');
-  const [performanceMetrics, setPerformanceMetrics] = useState<{
-    totalRequests: number;
-    successfulRequests: number;
-    failedRequests: number;
-    averageResponseTime: number;
-    uptime: number;
-    requestsPerSecond: number;
-    successRate: string;
-  } | null>(null);
-  const [showPerformance, setShowPerformance] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState({
     assignments: true,
     announcements: true,
@@ -44,28 +34,6 @@ export default function Dashboard() {
   const API_URL = process.env.NODE_ENV === 'production' 
     ? process.env.NEXT_PUBLIC_API_URL 
     : 'http://localhost:3000';
-
-  // Fetch performance metrics
-  const fetchPerformanceMetrics = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/performance`);
-      if (response.ok) {
-        const metrics = await response.json();
-        setPerformanceMetrics(metrics);
-      }
-    } catch (error) {
-      console.error('Failed to fetch performance metrics:', error);
-    }
-  };
-
-  // Auto-refresh performance metrics when connected
-  useEffect(() => {
-    if (isConnected) {
-      fetchPerformanceMetrics();
-      const interval = setInterval(fetchPerformanceMetrics, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [isConnected, API_URL, fetchPerformanceMetrics]);
 
   // Handle loading message timeout
   useEffect(() => {
@@ -146,10 +114,6 @@ export default function Dashboard() {
       setTimeout(() => {
         setActiveTab('courses');
       }, 500);
-      
-      setTimeout(() => {
-        fetchPerformanceMetrics();
-      }, 1000);
       
       setTimeout(() => {
         setLoadingProgress(0);
@@ -288,58 +252,6 @@ export default function Dashboard() {
             className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
             onClick={() => setSidebarCollapsed(true)}
           />
-        )}
-
-        {/* Performance Metrics Toggle */}
-        {isConnected && performanceMetrics && (
-          <div className="absolute top-4 right-4 z-30">
-            <button
-              onClick={() => setShowPerformance(!showPerformance)}
-              className="flex items-center space-x-2 px-3 py-2 rounded-full bg-white shadow-lg hover:shadow-xl transition-all duration-200 border border-gray-200"
-              title="Performance Metrics"
-            >
-              <span className="text-sm font-medium text-black">⚡</span>
-              <span className="text-xs text-black hidden sm:inline">
-                {performanceMetrics.successRate}
-              </span>
-            </button>
-          </div>
-        )}
-
-        {/* Performance Metrics Panel */}
-        {showPerformance && performanceMetrics && (
-          <div className="absolute top-16 right-4 z-30 w-80 max-w-sm p-4 bg-white rounded-lg shadow-xl border border-gray-200">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-black">⚡ Performance</h3>
-              <button
-                onClick={() => setShowPerformance(false)}
-                className="text-black hover:text-black text-sm"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="bg-blue-50 p-2 rounded">
-                <div className="text-black">Requests</div>
-                <div className="text-sm font-bold text-black">{performanceMetrics.totalRequests}</div>
-              </div>
-              <div className="bg-green-50 p-2 rounded">
-                <div className="text-black">Success</div>
-                <div className="text-sm font-bold text-black">{performanceMetrics.successRate}</div>
-              </div>
-              <div className="bg-purple-50 p-2 rounded">
-                <div className="text-black">Req/Sec</div>
-                <div className="text-sm font-bold text-black">{performanceMetrics.requestsPerSecond?.toFixed(1)}</div>
-              </div>
-              <div className="bg-orange-50 p-2 rounded">
-                <div className="text-black">Uptime</div>
-                <div className="text-sm font-bold text-black">{Math.round(performanceMetrics.uptime / 1000)}s</div>
-              </div>
-            </div>
-            <div className="mt-2 text-xs text-black">
-              ⚡ Parallel processing enabled
-            </div>
-          </div>
         )}
 
         {/* ChatGPT Style Interface */}
