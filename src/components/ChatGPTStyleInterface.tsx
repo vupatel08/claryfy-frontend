@@ -188,20 +188,22 @@ export default function ChatGPTStyleInterface({
               </div>
             </div>
 
-            {/* Recent Content Grid */}
-            <RecentContent
-              assignments={courseAssignments}
-              announcements={courseAnnouncements}
-              files={courseFiles}
-              expandedItems={expandedItems}
-              toggleExpanded={toggleExpanded}
-              formatDate={formatDate}
-              formatFileSize={formatFileSize}
-              getFileIcon={getFileIcon}
-              openFile={openFile}
-              closedRecentBoxes={closedRecentBoxes}
-              closeRecentBox={closeRecentBox}
-            />
+            {/* Recent Content Grid - Remove any event capturing */}
+            <div style={{ pointerEvents: 'auto' }}>
+              <RecentContent
+                assignments={courseAssignments}
+                announcements={courseAnnouncements}
+                files={courseFiles}
+                expandedItems={expandedItems}
+                toggleExpanded={toggleExpanded}
+                formatDate={formatDate}
+                formatFileSize={formatFileSize}
+                getFileIcon={getFileIcon}
+                openFile={openFile}
+                closedRecentBoxes={closedRecentBoxes}
+                closeRecentBox={closeRecentBox}
+              />
+            </div>
           </div>
         )}
       </div>

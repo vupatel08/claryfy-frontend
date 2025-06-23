@@ -142,6 +142,11 @@ export default function Dashboard() {
       setIsConnected(true);
       setShowLoadingMessage(true);
       
+      // Auto-redirect to courses tab after successful connection
+      setTimeout(() => {
+        setActiveTab('courses');
+      }, 500);
+      
       setTimeout(() => {
         fetchPerformanceMetrics();
       }, 1000);
