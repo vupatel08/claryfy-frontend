@@ -451,11 +451,11 @@ export default function Sidebar({
                         <h4 className="font-medium text-black mb-2">How to get your Canvas Access Token:</h4>
                         <ol className="list-decimal list-inside space-y-1 text-black text-xs">
                           <li>Go to your Canvas account settings</li>
-                          <li>Click on "Approved Integrations"</li>
-                          <li>Click "+ New Access Token"</li>
-                          <li>Enter a purpose (e.g., "Claryfy")</li>
+                          <li>Click on &quot;Approved Integrations&quot;</li>
+                          <li>Click &quot;+ New Access Token&quot;</li>
+                          <li>Enter a purpose (e.g., &quot;Claryfy&quot;)</li>
                           <li>Set expiration date (optional)</li>
-                          <li>Click "Generate Token"</li>
+                          <li>Click &quot;Generate Token&quot;</li>
                           <li>Copy the token immediately</li>
                         </ol>
                       </div>

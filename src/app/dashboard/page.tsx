@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { File } from '../../types/canvas';
+import FileViewer from '../../components/FileViewer';
 import Sidebar from '../../components/Sidebar';
 import ChatGPTStyleInterface from '../../components/ChatGPTStyleInterface';
 import { CanvasData } from '../../types/canvas';
@@ -17,7 +19,15 @@ export default function Dashboard() {
   const [showTokenHelp, setShowTokenHelp] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingStep, setLoadingStep] = useState('');
-  const [performanceMetrics, setPerformanceMetrics] = useState<any>(null);
+  const [performanceMetrics, setPerformanceMetrics] = useState<{
+    totalRequests: number;
+    successfulRequests: number;
+    failedRequests: number;
+    averageResponseTime: number;
+    uptime: number;
+    requestsPerSecond: number;
+    successRate: string;
+  } | null>(null);
   const [showPerformance, setShowPerformance] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState({
     assignments: true,
@@ -28,7 +38,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'courses' | 'profile'>('courses');
   const [showLoadingMessage, setShowLoadingMessage] = useState(false);
   const [closedRecentBoxes, setClosedRecentBoxes] = useState<Set<string>>(new Set());
-  const [viewingFile, setViewingFile] = useState<any>(null);
+  const [viewingFile, setViewingFile] = useState<File | null>(null);
 
 
   const API_URL = process.env.NODE_ENV === 'production' 
@@ -55,7 +65,7 @@ export default function Dashboard() {
       const interval = setInterval(fetchPerformanceMetrics, 5000);
       return () => clearInterval(interval);
     }
-  }, [isConnected, API_URL]);
+  }, [isConnected, API_URL, fetchPerformanceMetrics]);
 
   // Handle loading message timeout
   useEffect(() => {
@@ -140,8 +150,9 @@ export default function Dashboard() {
         setLoadingProgress(0);
         setLoadingStep('');
       }, 500);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      setError(errorMessage);
       setLoadingProgress(0);
       setLoadingStep('');
     } finally {
@@ -202,7 +213,7 @@ export default function Dashboard() {
     setClosedRecentBoxes(prev => new Set([...prev, boxType]));
   };
 
-  const openFile = (file: any) => {
+  const openFile = (file: File) => {
     setViewingFile(file);
   };
 
@@ -210,7 +221,7 @@ export default function Dashboard() {
     setViewingFile(null);
   };
 
-  const getFileIcon = (file: any): string => {
+  const getFileIcon = (file: File): string => {
     const contentType = file.content_type || '';
     const mimeClass = file.mime_class || '';
     
