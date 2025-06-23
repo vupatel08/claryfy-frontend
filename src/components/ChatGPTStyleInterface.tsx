@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { CanvasData, File } from '../types/canvas';
 import FileViewer from './FileViewer';
+import RecentContent from './RecentContent';
 
 
 interface Message {
@@ -188,172 +189,19 @@ export default function ChatGPTStyleInterface({
             </div>
 
             {/* Recent Content Grid */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {/* Recent Assignments */}
-              {!closedRecentBoxes.has('assignments') && (
-                <div className="bg-white border border-gray-200 rounded-lg p-6 relative">
-                  <button
-                    onClick={() => closeRecentBox('assignments')}
-                    className="absolute top-3 right-3 text-black hover:text-black p-1 font-bold"
-                    title="Close"
-                    style={{ color: '#000000' }}
-                  >
-                    ×
-                  </button>
-                  <h3 className="text-lg font-semibold text-black mb-4 flex items-center gap-2">
-                    <span className="text-black">📝</span>
-                    Recent Assignments
-                  </h3>
-                  {courseAssignments.length === 0 ? (
-                    <p className="text-black text-sm">No assignments found</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {courseAssignments.slice(0, 5).map(assignment => (
-                        <div 
-                          key={assignment.id} 
-                          className="p-3 bg-gray-50 rounded-md hover:bg-gray-100 cursor-pointer transition-colors border-l-4 border-transparent hover:border-blue-400"
-                          onClick={() => toggleExpanded('assignment', assignment.id)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-black text-sm mb-1">{assignment.name}</h4>
-                            <span className="text-xs text-gray-500">
-                              {expandedItems[`assignment-${assignment.id}`] ? '▼' : '▶'}
-                            </span>
-                          </div>
-                          <p className="text-xs text-black">
-                            {assignment.due_at ? `Due: ${formatDate(assignment.due_at)}` : 'No due date'}
-                          </p>
-                          {assignment.points_possible && (
-                            <p className="text-xs text-black">Points: {assignment.points_possible}</p>
-                          )}
-                          {expandedItems[`assignment-${assignment.id}`] && assignment.description && (
-                            <div className="mt-3 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500">
-                              <div className="text-xs text-blue-600 font-semibold mb-2">📝 Full Description:</div>
-                              <div 
-                                className="prose prose-sm max-w-none text-xs text-gray-800"
-                                dangerouslySetInnerHTML={{ __html: assignment.description }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      {courseAssignments.length > 5 && (
-                        <p className="text-xs text-black text-center">
-                          +{courseAssignments.length - 5} more assignments
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Recent Announcements */}
-              {!closedRecentBoxes.has('announcements') && (
-                <div className="bg-white border border-gray-200 rounded-lg p-6 relative">
-                  <button
-                    onClick={() => closeRecentBox('announcements')}
-                    className="absolute top-3 right-3 text-black hover:text-black p-1 font-bold"
-                    title="Close"
-                    style={{ color: '#000000' }}
-                  >
-                    ×
-                  </button>
-                  <h3 className="text-lg font-semibold text-black mb-4 flex items-center gap-2">
-                    <span className="text-black">📢</span>
-                    Recent Announcements
-                  </h3>
-                  {courseAnnouncements.length === 0 ? (
-                    <p className="text-black text-sm">No announcements found</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {courseAnnouncements.slice(0, 5).map(announcement => (
-                        <div 
-                          key={announcement.id} 
-                          className="p-3 bg-gray-50 rounded-md hover:bg-gray-100 cursor-pointer transition-colors border-l-4 border-transparent hover:border-green-400"
-                          onClick={() => toggleExpanded('announcement', announcement.id)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-black text-sm mb-1">{announcement.title}</h4>
-                            <span className="text-xs text-gray-500">
-                              {expandedItems[`announcement-${announcement.id}`] ? '▼' : '▶'}
-                            </span>
-                          </div>
-                          <p className="text-xs text-black">
-                            Posted: {formatDate(announcement.posted_at)}
-                          </p>
-                          {announcement.author?.display_name && (
-                            <p className="text-xs text-black">By: {announcement.author.display_name}</p>
-                          )}
-                          {expandedItems[`announcement-${announcement.id}`] && announcement.message && (
-                            <div className="mt-3 p-4 bg-green-50 rounded-lg border-l-4 border-green-500">
-                              <div className="text-xs text-green-600 font-semibold mb-2">📢 Full Message:</div>
-                              <div 
-                                className="prose prose-sm max-w-none text-xs text-gray-800"
-                                dangerouslySetInnerHTML={{ __html: announcement.message }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      {courseAnnouncements.length > 5 && (
-                        <p className="text-xs text-black text-center">
-                          +{courseAnnouncements.length - 5} more announcements
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Files Summary */}
-              {!closedRecentBoxes.has('files') && (
-                <div className="bg-white border border-gray-200 rounded-lg p-6 relative">
-                  <button
-                    onClick={() => closeRecentBox('files')}
-                    className="absolute top-3 right-3 text-black hover:text-black p-1 font-bold"
-                    title="Close"
-                    style={{ color: '#000000' }}
-                  >
-                    ×
-                  </button>
-                  <h3 className="text-lg font-semibold text-black mb-4 flex items-center gap-2">
-                    <span className="text-black">📁</span>
-                    Course Files
-                  </h3>
-
-                  {courseFiles.length === 0 ? (
-                    <p className="text-black text-sm">No files found</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {courseFiles.slice(0, 5).map(file => (
-                        <div 
-                          key={file.id} 
-                          className="p-3 bg-gray-50 rounded-md hover:bg-blue-100 cursor-pointer transition-colors border-l-4 border-transparent hover:border-blue-500"
-                          onClick={() => openFile(file)}
-                          title="Click to view file"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm">{getFileIcon(file)}</span>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-medium text-black text-sm truncate">{file.display_name}</h4>
-                              <p className="text-xs text-black">
-                                {file.size ? formatFileSize(file.size) : 'Unknown size'}
-                              </p>
-                            </div>
-                            <span className="text-xs text-gray-500">👁️</span>
-                          </div>
-                        </div>
-                      ))}
-                      {courseFiles.length > 5 && (
-                        <p className="text-xs text-black text-center">
-                          +{courseFiles.length - 5} more files
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <RecentContent
+              assignments={courseAssignments}
+              announcements={courseAnnouncements}
+              files={courseFiles}
+              expandedItems={expandedItems}
+              toggleExpanded={toggleExpanded}
+              formatDate={formatDate}
+              formatFileSize={formatFileSize}
+              getFileIcon={getFileIcon}
+              openFile={openFile}
+              closedRecentBoxes={closedRecentBoxes}
+              closeRecentBox={closeRecentBox}
+            />
           </div>
         )}
       </div>
