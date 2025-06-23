@@ -211,10 +211,15 @@ export default function ChatGPTStyleInterface({
                       {courseAssignments.slice(0, 5).map(assignment => (
                         <div 
                           key={assignment.id} 
-                          className="p-3 bg-gray-50 rounded-md hover:bg-gray-100 cursor-pointer transition-colors"
+                          className="p-3 bg-gray-50 rounded-md hover:bg-gray-100 cursor-pointer transition-colors border-l-4 border-transparent hover:border-blue-400"
                           onClick={() => toggleExpanded('assignment', assignment.id)}
                         >
-                          <h4 className="font-medium text-black text-sm mb-1">{assignment.name}</h4>
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium text-black text-sm mb-1">{assignment.name}</h4>
+                            <span className="text-xs text-gray-500">
+                              {expandedItems[`assignment-${assignment.id}`] ? '▼' : '▶'}
+                            </span>
+                          </div>
                           <p className="text-xs text-black">
                             {assignment.due_at ? `Due: ${formatDate(assignment.due_at)}` : 'No due date'}
                           </p>
@@ -222,9 +227,10 @@ export default function ChatGPTStyleInterface({
                             <p className="text-xs text-black">Points: {assignment.points_possible}</p>
                           )}
                           {expandedItems[`assignment-${assignment.id}`] && assignment.description && (
-                            <div className="mt-3 p-3 bg-white rounded border">
+                            <div className="mt-3 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+                              <div className="text-xs text-blue-600 font-semibold mb-2">📝 Full Description:</div>
                               <div 
-                                className="prose prose-sm max-w-none text-xs"
+                                className="prose prose-sm max-w-none text-xs text-gray-800"
                                 dangerouslySetInnerHTML={{ __html: assignment.description }}
                               />
                             </div>
@@ -263,10 +269,15 @@ export default function ChatGPTStyleInterface({
                       {courseAnnouncements.slice(0, 5).map(announcement => (
                         <div 
                           key={announcement.id} 
-                          className="p-3 bg-gray-50 rounded-md hover:bg-gray-100 cursor-pointer transition-colors"
+                          className="p-3 bg-gray-50 rounded-md hover:bg-gray-100 cursor-pointer transition-colors border-l-4 border-transparent hover:border-green-400"
                           onClick={() => toggleExpanded('announcement', announcement.id)}
                         >
-                          <h4 className="font-medium text-black text-sm mb-1">{announcement.title}</h4>
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium text-black text-sm mb-1">{announcement.title}</h4>
+                            <span className="text-xs text-gray-500">
+                              {expandedItems[`announcement-${announcement.id}`] ? '▼' : '▶'}
+                            </span>
+                          </div>
                           <p className="text-xs text-black">
                             Posted: {formatDate(announcement.posted_at)}
                           </p>
@@ -274,9 +285,10 @@ export default function ChatGPTStyleInterface({
                             <p className="text-xs text-black">By: {announcement.author.display_name}</p>
                           )}
                           {expandedItems[`announcement-${announcement.id}`] && announcement.message && (
-                            <div className="mt-3 p-3 bg-white rounded border">
+                            <div className="mt-3 p-4 bg-green-50 rounded-lg border-l-4 border-green-500">
+                              <div className="text-xs text-green-600 font-semibold mb-2">📢 Full Message:</div>
                               <div 
-                                className="prose prose-sm max-w-none text-xs"
+                                className="prose prose-sm max-w-none text-xs text-gray-800"
                                 dangerouslySetInnerHTML={{ __html: announcement.message }}
                               />
                             </div>
@@ -316,8 +328,9 @@ export default function ChatGPTStyleInterface({
                       {courseFiles.slice(0, 5).map(file => (
                         <div 
                           key={file.id} 
-                          className="p-3 bg-gray-50 rounded-md hover:bg-gray-100 cursor-pointer transition-colors"
+                          className="p-3 bg-gray-50 rounded-md hover:bg-blue-100 cursor-pointer transition-colors border-l-4 border-transparent hover:border-blue-500"
                           onClick={() => openFile(file)}
+                          title="Click to view file"
                         >
                           <div className="flex items-center gap-2">
                             <span className="text-sm">{getFileIcon(file)}</span>
@@ -327,6 +340,7 @@ export default function ChatGPTStyleInterface({
                                 {file.size ? formatFileSize(file.size) : 'Unknown size'}
                               </p>
                             </div>
+                            <span className="text-xs text-gray-500">👁️</span>
                           </div>
                         </div>
                       ))}
