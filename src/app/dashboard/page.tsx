@@ -1,14 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { File } from '../../types/canvas';
 import FileViewer from '../../components/FileViewer';
+import RecordingViewer from '../../components/RecordingViewer';
 import Sidebar from '../../components/Sidebar';
-import ChatGPTStyleInterface from '../../components/ChatGPTStyleInterface';
+import ChatGPTStyleInterface, { ChatGPTStyleInterfaceRef } from '../../components/ChatGPTStyleInterface';
 import { CanvasData } from '../../types/canvas';
+import { useAuth } from '../../contexts/AuthContext';
+import { UserProfileService } from '../../services/supabase';
 
 export default function Dashboard() {
   const [canvasData, setCanvasData] = useState<CanvasData | null>(null);
+  const [recordings, setRecordings] = useState<any[]>([]);
   const [token, setToken] = useState('');
   const [domain, setDomain] = useState('umd.instructure.com');
   const [isConnecting, setIsConnecting] = useState(false);
@@ -29,11 +33,37 @@ export default function Dashboard() {
   const [showLoadingMessage, setShowLoadingMessage] = useState(false);
   const [closedRecentBoxes, setClosedRecentBoxes] = useState<Set<string>>(new Set());
   const [viewingFile, setViewingFile] = useState<File | null>(null);
-
+  const [selectedRecording, setSelectedRecording] = useState<any | null>(null);
+  const { user, isAuthenticated } = useAuth();
+  
+  // Chat interface ref for communication from sidebar
+  const chatInterfaceRef = useRef<ChatGPTStyleInterfaceRef>(null);
 
   const API_URL = process.env.NODE_ENV === 'production' 
     ? process.env.NEXT_PUBLIC_API_URL 
     : 'http://localhost:3000';
+
+  // Fetch recordings for authenticated user
+  const fetchRecordings = async () => {
+    if (!isAuthenticated || !user) return;
+    
+    try {
+      // If a course is selected, filter recordings by course
+      const url = selectedCourseId 
+        ? `${API_URL}/api/recordings?userId=${user.id}&courseId=${selectedCourseId}`
+        : `${API_URL}/api/recordings?userId=${user.id}`;
+      
+      const response = await fetch(url);
+      if (response.ok) {
+        const recordingsData = await response.json();
+        setRecordings(recordingsData);
+        const selectedCourse = canvasData?.courses.find(course => course.id === selectedCourseId);
+        console.log(`📚 Loaded ${recordingsData.length} recordings${selectedCourse ? ` for course ${selectedCourse.name}` : ''}`);
+      }
+    } catch (error) {
+      console.error('Failed to fetch recordings:', error);
+    }
+  };
 
   // Handle loading message timeout
   useEffect(() => {
@@ -45,12 +75,105 @@ export default function Dashboard() {
     }
   }, [showLoadingMessage]);
 
+  // Refetch recordings when course selection changes
+  useEffect(() => {
+    if (isConnected) {
+      fetchRecordings();
+    }
+  }, [selectedCourseId, isConnected]);
+
+  // Auto-fetch Canvas credentials and connect if available
+  useEffect(() => {
+    const tryAutoConnect = async () => {
+      if (isAuthenticated && user && !isConnected) {
+        try {
+          const profile = await UserProfileService.getUserProfile(user.id);
+          if (profile?.canvas_token && profile?.canvas_domain) {
+            // Set state first
+            setToken(profile.canvas_token);
+            setDomain(profile.canvas_domain);
+            
+            // Debug log: show what will be sent
+            console.log('Auto-connect with:', { token: profile.canvas_token, domain: profile.canvas_domain });
+            
+            setIsConnecting(true);
+            setLoadingStep('Loading up your content...');
+            
+            try {
+              // Fetch both dashboard and profile data in parallel
+              const [dashboardResponse, profileResponse] = await Promise.all([
+                fetch(`${API_URL}/api/dashboard?token=${encodeURIComponent(profile.canvas_token)}&domain=${encodeURIComponent(profile.canvas_domain)}`),
+                fetch(`${API_URL}/api/profile?token=${encodeURIComponent(profile.canvas_token)}&domain=${encodeURIComponent(profile.canvas_domain)}`)
+              ]);
+              
+              if (!dashboardResponse.ok) {
+                const errorData = await dashboardResponse.json();
+                throw new Error(errorData.error || 'Failed to fetch Canvas data');
+              }
+
+              const dashboardData = await dashboardResponse.json();
+              
+              // Get profile data if available, otherwise use fallback
+              let profileData = { id: '1', name: 'User' }; // Fallback
+              if (profileResponse.ok) {
+                try {
+                  const canvasProfile = await profileResponse.json();
+                  profileData = {
+                    id: canvasProfile.id?.toString() || '1',
+                    name: canvasProfile.name || canvasProfile.short_name || 'User'
+                  };
+                } catch (err) {
+                  console.log('Profile data not available, using fallback');
+                }
+              }
+              
+              // Structure the data to match the expected format
+              const canvasData = {
+                profile: profileData,
+                courses: dashboardData.courses || [],
+                assignments: dashboardData.assignments || [],
+                announcements: dashboardData.announcements || [],
+                files: dashboardData.files || []
+              };
+              
+              setCanvasData(canvasData);
+              setIsConnected(true);
+              setShowLoadingMessage(true);
+              
+              // Fetch recordings after successful connection
+              await fetchRecordings();
+              
+              // Auto-redirect to courses tab after successful connection
+              setTimeout(() => {
+                setActiveTab('courses');
+              }, 500);
+              
+            } catch (err: unknown) {
+              const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+              setError(errorMessage);
+              console.error('Auto-connect failed:', errorMessage);
+            } finally {
+              setIsConnecting(false);
+              setLoadingStep('');
+            }
+          }
+        } catch (err) {
+          // Fail silently, user can still connect manually
+          console.error('Failed to fetch user profile for auto-connect:', err);
+        }
+      }
+    };
+    tryAutoConnect();
+    // Only run when user or isAuthenticated changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, user]);
+
   const handleConnect = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsConnecting(true);
     setError('');
     setLoadingProgress(0);
-    setLoadingStep('Validating credentials...');
+    setLoadingStep('Loading up your content...');
 
     const startTime = Date.now();
 
@@ -58,27 +181,18 @@ export default function Dashboard() {
       setLoadingProgress(20);
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Step 1: Authenticate with Canvas
-      const authResponse = await fetch(`${API_URL}/auth`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token, domain }),
-      });
-
-      const authData = await authResponse.json();
-
-      if (!authResponse.ok) {
-        throw new Error(authData.error || 'Failed to authenticate with Canvas');
-      }
+      // Debug log: show what is being sent
+      console.log('Sending to dashboard:', { token, domain });
 
       setLoadingProgress(50);
-      setLoadingStep('Fetching your Canvas data with parallel processing...');
+      setLoadingStep('Gathering your courses and assignments...');
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Step 2: Fetch dashboard data
-      const dashboardResponse = await fetch(`${API_URL}/api/dashboard`);
+      // Fetch both dashboard and profile data in parallel
+      const [dashboardResponse, profileResponse] = await Promise.all([
+        fetch(`${API_URL}/api/dashboard?token=${encodeURIComponent(token)}&domain=${encodeURIComponent(domain)}`),
+        fetch(`${API_URL}/api/profile?token=${encodeURIComponent(token)}&domain=${encodeURIComponent(domain)}`)
+      ]);
       
       if (!dashboardResponse.ok) {
         const errorData = await dashboardResponse.json();
@@ -86,20 +200,61 @@ export default function Dashboard() {
       }
 
       const dashboardData = await dashboardResponse.json();
+      
+      // Get profile data if available, otherwise use fallback
+      let profileData = { id: '1', name: 'User' }; // Fallback
+      if (profileResponse.ok) {
+        try {
+          const canvasProfile = await profileResponse.json();
+          profileData = {
+            id: canvasProfile.id?.toString() || '1',
+            name: canvasProfile.name || canvasProfile.short_name || 'User'
+          };
+        } catch (err) {
+          console.log('Profile data not available, using fallback');
+        }
+      }
 
       setLoadingProgress(80);
-      setLoadingStep('Optimizing and organizing data...');
+      setLoadingStep('Organizing your content...');
       await new Promise(resolve => setTimeout(resolve, 300));
 
+      // PHASE 4: Vectorize Canvas data after successful fetch
+      if (isAuthenticated && user) {
+        setLoadingStep('Preparing AI assistant...');
+        try {
+          const vectorizeResponse = await fetch(`${API_URL}/api/weaviate/sync/canvas`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: user.id,
+              token: token,
+              domain: domain
+            })
+          });
+
+          if (vectorizeResponse.ok) {
+            console.log('✅ Canvas data vectorized successfully');
+          } else {
+            console.warn('⚠️ Vectorization failed, but continuing with normal functionality');
+          }
+        } catch (vectorError) {
+          console.warn('⚠️ Vectorization error:', vectorError);
+          // Don't fail the connection if vectorization fails
+        }
+      }
+
       setLoadingProgress(100);
-      setLoadingStep('Complete!');
+      setLoadingStep('All set! Welcome to Claryfy!');
       
       const totalTime = Date.now() - startTime;
-      console.log(`🚀 Canvas data loaded in ${totalTime}ms with parallel processing!`);
+      console.log(`🚀 Canvas data loaded in ${totalTime}ms with streamlined process!`);
       
       // Structure the data to match the expected format
       const canvasData = {
-        profile: { id: '1', name: 'User' }, // Placeholder profile
+        profile: profileData,
         courses: dashboardData.courses || [],
         assignments: dashboardData.assignments || [],
         announcements: dashboardData.announcements || [],
@@ -110,6 +265,9 @@ export default function Dashboard() {
       setIsConnected(true);
       setShowLoadingMessage(true);
       
+      // Fetch recordings after successful connection
+      await fetchRecordings();
+      
       // Auto-redirect to courses tab after successful connection
       setTimeout(() => {
         setActiveTab('courses');
@@ -119,6 +277,100 @@ export default function Dashboard() {
         setLoadingProgress(0);
         setLoadingStep('');
       }, 500);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      setError(errorMessage);
+      setLoadingProgress(0);
+      setLoadingStep('');
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  // PHASE 4: Refresh Canvas data and re-vectorize
+  const handleRefresh = async () => {
+    if (!isAuthenticated || !user || !token || !domain) {
+      setError('User authentication or Canvas credentials not available');
+      return;
+    }
+
+    setIsConnecting(true);
+    setError('');
+    setLoadingProgress(0);
+    setLoadingStep('Refreshing your content...');
+
+    try {
+      const refreshResponse = await fetch(`${API_URL}/api/refresh-canvas-data`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          token: token,
+          domain: domain
+        })
+      });
+
+      if (!refreshResponse.ok) {
+        const errorData = await refreshResponse.json();
+        throw new Error(errorData.error || 'Failed to refresh Canvas data');
+      }
+
+      const refreshResult = await refreshResponse.json();
+
+      setLoadingProgress(50);
+      setLoadingStep('Getting latest updates...');
+
+      // Re-fetch dashboard and profile data
+      const [dashboardResponse, profileResponse] = await Promise.all([
+        fetch(`${API_URL}/api/dashboard?token=${encodeURIComponent(token)}&domain=${encodeURIComponent(domain)}`),
+        fetch(`${API_URL}/api/profile?token=${encodeURIComponent(token)}&domain=${encodeURIComponent(domain)}`)
+      ]);
+      
+      if (!dashboardResponse.ok) {
+        const errorData = await dashboardResponse.json();
+        throw new Error(errorData.error || 'Failed to fetch updated Canvas data');
+      }
+
+      const dashboardData = await dashboardResponse.json();
+      
+      // Get profile data if available, otherwise use fallback
+      let profileData = { id: '1', name: 'User' }; // Fallback
+      if (profileResponse.ok) {
+        try {
+          const canvasProfile = await profileResponse.json();
+          profileData = {
+            id: canvasProfile.id?.toString() || '1',
+            name: canvasProfile.name || canvasProfile.short_name || 'User'
+          };
+        } catch (err) {
+          console.log('Profile data not available, using fallback');
+        }
+      }
+
+      setLoadingProgress(100);
+      setLoadingStep('Content updated successfully!');
+
+      // Update Canvas data
+      const updatedCanvasData = {
+        profile: profileData,
+        courses: dashboardData.courses || [],
+        assignments: dashboardData.assignments || [],
+        announcements: dashboardData.announcements || [],
+        files: dashboardData.files || []
+      };
+      
+      setCanvasData(updatedCanvasData);
+      setShowLoadingMessage(true);
+
+      console.log('🔄 Canvas data refreshed and vectorized:', refreshResult);
+
+      setTimeout(() => {
+        setLoadingProgress(0);
+        setLoadingStep('');
+      }, 1000);
+
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
       setError(errorMessage);
@@ -184,10 +436,20 @@ export default function Dashboard() {
 
   const openFile = (file: File) => {
     setViewingFile(file);
+    setSelectedRecording(null); // Close recording if viewing file
   };
 
   const closeFile = () => {
     setViewingFile(null);
+  };
+
+  const openRecording = (recording: any) => {
+    setSelectedRecording(recording);
+    setViewingFile(null); // Close file if viewing recording
+  };
+
+  const closeRecording = () => {
+    setSelectedRecording(null);
   };
 
   const getFileIcon = (file: File): string => {
@@ -206,6 +468,19 @@ export default function Dashboard() {
     if (contentType.includes('html') || mimeClass === 'html') return '🌐';
     if (contentType.includes('javascript') || contentType.includes('json')) return '⚙️';
     return '📁';
+  };
+
+  // Chat handlers for sidebar
+  const handleNewChat = () => {
+    if (chatInterfaceRef.current) {
+      chatInterfaceRef.current.startNewChat();
+    }
+  };
+
+  const handleLoadConversation = (conversationId: string) => {
+    if (chatInterfaceRef.current) {
+      chatInterfaceRef.current.loadConversationMessages(conversationId);
+    }
   };
 
   return (
@@ -230,6 +505,7 @@ export default function Dashboard() {
         showTokenHelp={showTokenHelp}
         setShowTokenHelp={setShowTokenHelp}
         handleConnect={handleConnect}
+        handleRefresh={handleRefresh}
         loadingProgress={loadingProgress}
         loadingStep={loadingStep}
         error={error}
@@ -239,13 +515,17 @@ export default function Dashboard() {
         expandedItems={expandedItems}
         toggleExpanded={toggleExpanded}
         formatDate={formatDate}
-        formatFileSize={formatFileSize}
-        getFileIcon={getFileIcon}
-        openFile={openFile}
+                    formatFileSize={formatFileSize}
+            getFileIcon={getFileIcon}
+            openFile={openFile}
+            recordings={recordings}
+            openRecording={openRecording}
+        onNewChat={handleNewChat}
+        onLoadConversation={handleLoadConversation}
       />
 
       {/* Main Content */}
-      <div className="flex-1 bg-white min-w-0">
+      <div className="flex-1 bg-white min-w-0 flex">
         {/* Mobile sidebar overlay */}
         {!sidebarCollapsed && (
           <div 
@@ -254,23 +534,36 @@ export default function Dashboard() {
           />
         )}
 
-        {/* ChatGPT Style Interface */}
-        <ChatGPTStyleInterface
-          canvasData={canvasData}
-          selectedCourseId={selectedCourseId}
-          isConnected={isConnected}
-          setActiveTab={setActiveTab}
-          closedRecentBoxes={closedRecentBoxes}
-          closeRecentBox={closeRecentBox}
-          expandedItems={expandedItems}
-          toggleExpanded={toggleExpanded}
-          formatDate={formatDate}
-          formatFileSize={formatFileSize}
-          getFileIcon={getFileIcon}
-          viewingFile={viewingFile}
-          openFile={openFile}
-          closeFile={closeFile}
-        />
+        {/* Recording Viewer - Left Side */}
+        {selectedRecording && (
+          <div className="w-1/2 h-screen">
+            <RecordingViewer
+              recording={selectedRecording}
+              onClose={closeRecording}
+            />
+          </div>
+        )}
+
+        {/* ChatGPT Style Interface - Right Side */}
+        <div className={selectedRecording ? "w-1/2" : "w-full"}>
+          <ChatGPTStyleInterface
+            ref={chatInterfaceRef}
+            canvasData={canvasData}
+            selectedCourseId={selectedCourseId}
+            isConnected={isConnected}
+            setActiveTab={setActiveTab}
+            closedRecentBoxes={closedRecentBoxes}
+            closeRecentBox={closeRecentBox}
+            expandedItems={expandedItems}
+            toggleExpanded={toggleExpanded}
+            formatDate={formatDate}
+            formatFileSize={formatFileSize}
+            getFileIcon={getFileIcon}
+            viewingFile={viewingFile}
+            openFile={openFile}
+            closeFile={closeFile}
+          />
+        </div>
       </div>
 
 
