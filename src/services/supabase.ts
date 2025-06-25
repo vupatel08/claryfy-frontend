@@ -5,30 +5,62 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing Supabase configuration. Please check environment variables.');
+// Create a function to get the Supabase client
+function getSupabaseClient() {
+    if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Missing Supabase configuration. Please check environment variables.');
+    }
+
+    return createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+            autoRefreshToken: true,
+            persistSession: true,
+        },
+    });
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-    },
+// Export a lazy-loaded client to avoid build-time issues
+let _supabaseClient: any = null;
+
+export const supabase = new Proxy({} as any, {
+    get(target, prop) {
+        // Initialize client on first access
+        if (!_supabaseClient) {
+            try {
+                _supabaseClient = getSupabaseClient();
+            } catch (error) {
+                // During build time or when env vars are missing, return a helpful error
+                if (typeof window === 'undefined') {
+                    console.warn('Supabase client accessed during build time - this should not happen in production');
+                    throw new Error('Supabase client not available during build time');
+                }
+                throw error;
+            }
+        }
+        return _supabaseClient[prop];
+    }
 });
 
 // =============================================
 // AUTHENTICATION SERVICE
 // =============================================
 
+// Helper function to ensure Supabase client is available
+function ensureSupabaseClient() {
+    // The proxy will handle initialization automatically
+    return supabase;
+}
+
 export class AuthService {
 
     // Sign up with email and password
     static async signUp(email: string, password: string, metadata?: any) {
         try {
-            const { data, error } = await supabase.auth.signUp({
+            const client = ensureSupabaseClient();
+            const { data, error } = await client.auth.signUp({
                 email,
                 password,
                 options: {
@@ -47,7 +79,8 @@ export class AuthService {
     // Sign in with email and password
     static async signIn(email: string, password: string) {
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({
+            const client = ensureSupabaseClient();
+            const { data, error } = await client.auth.signInWithPassword({
                 email,
                 password,
             });
@@ -63,7 +96,8 @@ export class AuthService {
     // Sign out
     static async signOut() {
         try {
-            const { error } = await supabase.auth.signOut();
+            const client = ensureSupabaseClient();
+            const { error } = await client.auth.signOut();
             if (error) throw error;
         } catch (error) {
             console.error('Error signing out:', error);
@@ -74,7 +108,8 @@ export class AuthService {
     // Get current user
     static async getCurrentUser() {
         try {
-            const { data: { user }, error } = await supabase.auth.getUser();
+            const client = ensureSupabaseClient();
+            const { data: { user }, error } = await client.auth.getUser();
             if (error) throw error;
             return user;
         } catch (error) {
@@ -86,7 +121,8 @@ export class AuthService {
     // Get current session
     static async getCurrentSession() {
         try {
-            const { data: { session }, error } = await supabase.auth.getSession();
+            const client = ensureSupabaseClient();
+            const { data: { session }, error } = await client.auth.getSession();
             if (error) throw error;
             return session;
         } catch (error) {
@@ -97,7 +133,8 @@ export class AuthService {
 
     // Listen to auth changes
     static onAuthStateChange(callback: (event: string, session: any) => void) {
-        return supabase.auth.onAuthStateChange(callback);
+        const client = ensureSupabaseClient();
+        return client.auth.onAuthStateChange(callback);
     }
 }
 
@@ -110,7 +147,8 @@ export class UserProfileService {
     // Get user profile
     static async getUserProfile(userId: string) {
         try {
-            const { data, error } = await supabase
+            const client = ensureSupabaseClient();
+            const { data, error } = await client
                 .from('users')
                 .select('*')
                 .eq('id', userId)
@@ -127,7 +165,8 @@ export class UserProfileService {
     // Update user profile
     static async updateUserProfile(userId: string, updates: any) {
         try {
-            const { data, error } = await supabase
+            const client = ensureSupabaseClient();
+            const { data, error } = await client
                 .from('users')
                 .update({
                     ...updates,
@@ -148,7 +187,8 @@ export class UserProfileService {
     // Update Canvas credentials
     static async updateCanvasCredentials(userId: string, token: string, domain: string) {
         try {
-            const { data, error } = await supabase
+            const client = ensureSupabaseClient();
+            const { data, error } = await client
                 .from('users')
                 .update({
                     canvas_token: token,
@@ -177,7 +217,8 @@ export class ConversationService {
     // Get user conversations
     static async getUserConversations(userId: string, courseId?: number) {
         try {
-            let query = supabase
+            const client = ensureSupabaseClient();
+            let query = client
                 .from('conversation_summary')
                 .select('*')
                 .eq('user_id', userId)
@@ -200,7 +241,8 @@ export class ConversationService {
     // Get conversation messages
     static async getConversationMessages(conversationId: string) {
         try {
-            const { data, error } = await supabase
+            const client = ensureSupabaseClient();
+            const { data, error } = await client
                 .from('messages')
                 .select('*')
                 .eq('conversation_id', conversationId)
@@ -217,7 +259,8 @@ export class ConversationService {
     // Create new conversation
     static async createConversation(userId: string, courseId: number, title: string) {
         try {
-            const { data, error } = await supabase
+            const client = ensureSupabaseClient();
+            const { data, error } = await client
                 .from('conversations')
                 .insert({
                     user_id: userId,
@@ -238,7 +281,8 @@ export class ConversationService {
     // Add message to conversation
     static async addMessage(conversationId: string, content: string, role: 'user' | 'assistant', metadata?: any) {
         try {
-            const { data, error } = await supabase
+            const client = ensureSupabaseClient();
+            const { data, error } = await client
                 .from('messages')
                 .insert({
                     conversation_id: conversationId,
@@ -267,7 +311,8 @@ export class RecordingService {
     // Get user recordings
     static async getUserRecordings(userId: string, courseId?: number) {
         try {
-            let query = supabase
+            const client = ensureSupabaseClient();
+            let query = client
                 .from('recording_summary')
                 .select('*')
                 .eq('user_id', userId)
@@ -290,7 +335,8 @@ export class RecordingService {
     // Create new recording
     static async createRecording(userId: string, courseId: number, title: string, duration: number) {
         try {
-            const { data, error } = await supabase
+            const client = ensureSupabaseClient();
+            const { data, error } = await client
                 .from('recordings')
                 .insert({
                     user_id: userId,
@@ -320,9 +366,10 @@ export class StorageService {
     // Upload audio file
     static async uploadAudioFile(userId: string, recordingId: string, audioBlob: Blob) {
         try {
+            const client = ensureSupabaseClient();
             const fileName = `${userId}/${recordingId}.webm`;
 
-            const { data, error } = await supabase.storage
+            const { data, error } = await client.storage
                 .from('recordings')
                 .upload(fileName, audioBlob, {
                     cacheControl: '3600',
@@ -340,9 +387,10 @@ export class StorageService {
     // Get audio file URL
     static async getAudioFileUrl(userId: string, recordingId: string) {
         try {
+            const client = ensureSupabaseClient();
             const fileName = `${userId}/${recordingId}.webm`;
 
-            const { data } = supabase.storage
+            const { data } = client.storage
                 .from('recordings')
                 .getPublicUrl(fileName);
 
@@ -362,7 +410,8 @@ export class RealtimeService {
 
     // Subscribe to conversation messages
     static subscribeToConversation(conversationId: string, callback: (payload: any) => void) {
-        return supabase
+        const client = ensureSupabaseClient();
+        return client
             .channel(`conversation_${conversationId}`)
             .on(
                 'postgres_changes',
@@ -379,7 +428,8 @@ export class RealtimeService {
 
     // Subscribe to user recordings
     static subscribeToUserRecordings(userId: string, callback: (payload: any) => void) {
-        return supabase
+        const client = ensureSupabaseClient();
+        return client
             .channel(`user_recordings_${userId}`)
             .on(
                 'postgres_changes',
@@ -397,10 +447,11 @@ export class RealtimeService {
     // Unsubscribe from channel
     static unsubscribe(subscription: any) {
         if (subscription) {
-            supabase.removeChannel(subscription);
+            const client = ensureSupabaseClient();
+            client.removeChannel(subscription);
         }
     }
 }
 
-// Export the main client
+// Export the main client (with safeguards)
 export default supabase; 

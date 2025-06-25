@@ -22,6 +22,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') {
+      setLoading(false);
+      return;
+    }
+
     // Get initial session
     const getInitialSession = async () => {
       try {
@@ -40,14 +46,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getInitialSession();
 
     // Listen for auth changes
-    const { data: { subscription } } = AuthService.onAuthStateChange(
-      (event, session) => {
-        console.log('Auth state changed:', event, session);
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
+    let subscription: any;
+    try {
+      const { data: { subscription: sub } } = AuthService.onAuthStateChange(
+        (event, session) => {
+          console.log('Auth state changed:', event, session);
+          setSession(session);
+          setUser(session?.user ?? null);
+          setLoading(false);
+        }
+      );
+      subscription = sub;
+    } catch (error) {
+      console.error('Error setting up auth state listener:', error);
+      setLoading(false);
+    }
 
     return () => {
       subscription?.unsubscribe();
