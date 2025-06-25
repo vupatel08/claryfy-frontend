@@ -113,7 +113,7 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
   // Load conversations for current user
   const loadConversations = async (userId: string) => {
     try {
-      const userConversations = await ConversationService.getUserConversations(userId, selectedCourseId);
+      const userConversations = await ConversationService.getUserConversations(userId, selectedCourseId || undefined);
       setConversations(userConversations);
     } catch (error) {
       console.error('Error loading conversations:', error);
@@ -141,6 +141,12 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
   // Create new conversation
   const createNewConversation = async (title: string) => {
     if (!currentUser) return null;
+    
+    // Don't create conversation if no course is selected
+    if (!selectedCourseId) {
+      console.warn('Cannot create conversation without a selected course');
+      return null;
+    }
     
     try {
       const conversation = await ConversationService.createConversation(

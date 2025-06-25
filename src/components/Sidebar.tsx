@@ -319,10 +319,14 @@ export default function Sidebar({
 
     } catch (error) {
       console.error('Error starting recording:', error);
-      if (error.name === 'NotAllowedError') {
-        setRecordingError('Microphone permission denied. Please allow microphone access and try again.');
-      } else if (error.name === 'NotFoundError') {
-        setRecordingError('No microphone found. Please connect a microphone and try again.');
+      if (error instanceof Error) {
+        if (error.name === 'NotAllowedError') {
+          setRecordingError('Microphone permission denied. Please allow microphone access and try again.');
+        } else if (error.name === 'NotFoundError') {
+          setRecordingError('No microphone found. Please connect a microphone and try again.');
+        } else {
+          setRecordingError('Failed to start recording. Please check your microphone settings.');
+        }
       } else {
         setRecordingError('Failed to start recording. Please check your microphone and try again.');
       }

@@ -58,7 +58,7 @@ export default function Dashboard() {
         const recordingsData = await response.json();
         setRecordings(recordingsData);
         const selectedCourse = canvasData?.courses.find(course => course.id === selectedCourseId);
-        console.log(`📚 Loaded ${recordingsData.length} recordings${selectedCourse ? ` for course ${selectedCourse.name}` : ''}`);
+        console.log(`📚 Loaded ${recordingsData.length} recordings${selectedCourse ? ` for course ${selectedCourse.longName}` : ''}`);
       }
     } catch (error) {
       console.error('Failed to fetch recordings:', error);
