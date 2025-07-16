@@ -21,7 +21,7 @@ interface AssignmentViewerProps {
 }
 
 export default function AssignmentViewer({ assignment, onClose }: AssignmentViewerProps) {
-  const formatDate = (dateString: string | null): string => {
+  const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return 'No due date';
     try {
       const date = new Date(dateString);
