@@ -841,14 +841,6 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
                   <span className="text-sm">Voice Message</span>
                 </button>
                 
-                {/* Browse Prompts Button */}
-                <button
-                  className="flex items-center gap-2 px-3 py-2 text-secondary hover:text-primary transition-colors rounded-lg hover:bg-surface/50"
-                  title="Browse prompts"
-                >
-                  <FileText className="w-4 h-4" />
-                  <span className="text-sm">Browse Prompts</span>
-                </button>
               </div>
               
               {/* Character Counter */}
