@@ -2,6 +2,7 @@
 
 import { File } from '../types/canvas';
 import { useState, useEffect } from 'react';
+import { FileText, Download, ExternalLink, X, FileImage, FileArchive, FileCode, FileSpreadsheet, Presentation, FileVideo, FileAudio } from 'lucide-react';
 
 interface FileViewerProps {
   file: File;
@@ -71,12 +72,26 @@ export default function FileViewer({ file, onClose }: FileViewerProps) {
            contentType.includes('application/vnd.openxmlformats');
   };
 
+  const getFileIcon = () => {
+    const { fileExtension } = getFileInfo();
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(fileExtension)) return <FileImage className="w-8 h-8 text-gray-600" />;
+    if (['doc', 'docx'].includes(fileExtension)) return <FileText className="w-8 h-8 text-gray-600" />;
+    if (['xls', 'xlsx'].includes(fileExtension)) return <FileSpreadsheet className="w-8 h-8 text-gray-600" />;
+    if (['ppt', 'pptx'].includes(fileExtension)) return <Presentation className="w-8 h-8 text-gray-600" />;
+    if (['zip', 'rar', '7z'].includes(fileExtension)) return <FileArchive className="w-8 h-8 text-gray-600" />;
+    if (['txt', 'md'].includes(fileExtension)) return <FileText className="w-8 h-8 text-gray-600" />;
+    if (['html', 'htm'].includes(fileExtension)) return <FileCode className="w-8 h-8 text-gray-600" />;
+    if (['mp4', 'avi', 'mov', 'wmv'].includes(fileExtension)) return <FileVideo className="w-8 h-8 text-gray-600" />;
+    if (['mp3', 'wav', 'aac'].includes(fileExtension)) return <FileAudio className="w-8 h-8 text-gray-600" />;
+    return <FileText className="w-8 h-8 text-gray-600" />;
+  };
+
   const renderContent = () => {
     if (isLoading) {
       return (
-        <div className="w-full h-full flex items-center justify-center bg-gray-50">
+        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
           <div className="text-center">
-            <div className="text-4xl mb-4">⏳</div>
+            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Loading file...</h3>
             <p className="text-sm text-gray-600">Please wait...</p>
           </div>
@@ -86,17 +101,20 @@ export default function FileViewer({ file, onClose }: FileViewerProps) {
 
     if (error) {
       return (
-        <div className="w-full h-full flex items-center justify-center bg-gray-50">
+        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-50 to-red-100">
           <div className="text-center">
-            <div className="text-4xl mb-4">❌</div>
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <X className="w-8 h-8 text-red-600" />
+            </div>
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Cannot load file</h3>
-            <p className="text-sm text-gray-600 mb-4">{error}</p>
+            <p className="text-sm text-gray-600 mb-6">{error}</p>
             <a
               href={fallbackUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
             >
+              <ExternalLink className="w-4 h-4" />
               Open in Canvas
             </a>
           </div>
@@ -142,21 +160,13 @@ export default function FileViewer({ file, onClose }: FileViewerProps) {
 
     // For all other file types, show download button only
     const { fileName, fileExtension, fileSize } = getFileInfo();
-    const getFileIcon = () => {
-      if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(fileExtension)) return '🖼️';
-      if (['doc', 'docx'].includes(fileExtension)) return '📝';
-      if (['xls', 'xlsx'].includes(fileExtension)) return '📊';
-      if (['ppt', 'pptx'].includes(fileExtension)) return '📽️';
-      if (['zip', 'rar', '7z'].includes(fileExtension)) return '🗜️';
-      if (['txt', 'md'].includes(fileExtension)) return '📄';
-      if (['html', 'htm'].includes(fileExtension)) return '🌐';
-      return '📄';
-    };
 
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-50">
+      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="text-center max-w-md">
-          <div className="text-6xl mb-4">{getFileIcon()}</div>
+          <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+            {getFileIcon()}
+          </div>
           <h3 className="text-xl font-semibold text-gray-800 mb-2">{fileName}</h3>
           <p className="text-sm text-gray-600 mb-4">
             {fileExtension.toUpperCase()} file • {formatFileSize(fileSize)}
@@ -168,17 +178,19 @@ export default function FileViewer({ file, onClose }: FileViewerProps) {
             <a
               href={backendFileUrl}
               download={file.display_name}
-              className="block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
             >
-              📥 Download File
+              <Download className="w-4 h-4" />
+              Download File
             </a>
             <a
               href={fallbackUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="block px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
             >
-              🔗 Open in Canvas
+              <ExternalLink className="w-4 h-4" />
+              Open in Canvas
             </a>
           </div>
         </div>
@@ -189,22 +201,28 @@ export default function FileViewer({ file, onClose }: FileViewerProps) {
   return (
     <div className="h-full w-full flex flex-col bg-white border-r border-gray-200">
       {/* File Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
-        <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-semibold text-gray-800 truncate" title={file.display_name}>
-            {file.display_name}
-          </h3>
-          <p className="text-xs text-gray-600">
-            {formatFileSize(file.size)} • {file.content_type}
-          </p>
+      <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+          <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
+            {getFileIcon()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-semibold text-gray-800 truncate" title={file.display_name}>
+              {file.display_name}
+            </h3>
+            <p className="text-xs text-gray-600">
+              {formatFileSize(file.size)} • {file.content_type}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {(isPDF() || isOfficeDocument()) && (
             <a
               href={backendFileUrl}
               download={file.display_name}
-              className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors"
+              className="flex items-center gap-1 px-3 py-1.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-xs font-medium"
             >
+              <Download className="w-3 h-3" />
               Download
             </a>
           )}
@@ -213,7 +231,7 @@ export default function FileViewer({ file, onClose }: FileViewerProps) {
             className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
             title="Close file"
           >
-            ×
+            <X className="w-5 h-5" />
           </button>
         </div>
       </div>

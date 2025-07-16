@@ -7,6 +7,41 @@ import RecentContent from './RecentContent';
 import { AuthService, ConversationService } from '../services/supabase';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { 
+  MessageSquare, 
+  ChevronLeft, 
+  BookOpen, 
+  User, 
+  ChevronDown, 
+  ChevronRight,
+  Mic,
+  MicOff,
+  Pause,
+  Play,
+  Square,
+  FileText,
+  Video,
+  FileAudio,
+  Image,
+  Archive,
+  Globe,
+  Settings,
+  HelpCircle,
+  Download,
+  Upload,
+  Plus,
+  Search,
+  Calendar,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Info,
+  Link,
+  Paperclip,
+  X,
+  Mail,
+  Bot
+} from 'lucide-react';
 
 interface Message {
   id: string;
@@ -54,6 +89,9 @@ interface ChatGPTStyleInterfaceProps {
   selectedAnnouncement: any | null;
   openAnnouncement: (announcement: any) => void;
   closeAnnouncement: () => void;
+  isConnecting?: boolean;
+  sidebarCollapsed?: boolean;
+  setSidebarCollapsed?: (collapsed: boolean) => void;
 }
 
 const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleInterfaceProps>(({
@@ -77,6 +115,9 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
   selectedAnnouncement,
   openAnnouncement,
   closeAnnouncement,
+  isConnecting = false,
+  sidebarCollapsed = false,
+  setSidebarCollapsed,
 }, ref) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -92,10 +133,7 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
   const scrollableContainerRef = useRef<HTMLDivElement>(null);
   const [isClient, setIsClient] = useState(false);
   
-  // Reasoning/thinking process state
-  const [isReasoning, setIsReasoning] = useState(false);
-  const [reasoningSteps, setReasoningSteps] = useState<string[]>([]);
-  const [currentReasoningStep, setCurrentReasoningStep] = useState(0);
+
 
   // Ensure we're on the client side to prevent hydration mismatches
   useEffect(() => {
@@ -242,102 +280,7 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
     }
   }, [messages, isTyping, isChatMode]);
 
-  // Auto-scroll during reasoning process
-  useEffect(() => {
-    if (isReasoning && isChatMode) {
-      const timer = setTimeout(() => {
-        scrollToBottom(true);
-      }, 100);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [isReasoning, currentReasoningStep, isChatMode]);
 
-  // Simulate AI reasoning process
-  const simulateReasoning = async (userMessage: string, courseId?: number | null) => {
-    setIsReasoning(true);
-    setCurrentReasoningStep(0);
-    
-    // Generate reasoning steps based on context
-    const steps = [];
-    const messageLower = userMessage.toLowerCase();
-    
-    // Always start with thinking
-    steps.push("🧠 Thinking about your question...");
-    
-    // Add course-specific reasoning if course is selected
-    if (courseId && selectedCourse) {
-      steps.push(`📚 Looking through your ${selectedCourse.courseCode} content...`);
-      
-      // Check what type of content we might be searching
-      if (messageLower.includes('assignment') || messageLower.includes('homework') || messageLower.includes('hw') || messageLower.includes('project')) {
-        steps.push("📝 Searching through assignments and submissions...");
-        if (messageLower.includes('due') || messageLower.includes('deadline')) {
-          steps.push("⏰ Cross-referencing due dates...");
-        }
-      }
-      
-      if (messageLower.includes('announcement') || messageLower.includes('news') || messageLower.includes('update')) {
-        steps.push("📢 Checking recent announcements...");
-      }
-      
-      if (messageLower.includes('file') || messageLower.includes('document') || messageLower.includes('pdf') || messageLower.includes('resource')) {
-        steps.push("📁 Looking through course files and resources...");
-      }
-      
-      if (messageLower.includes('grade') || messageLower.includes('score') || messageLower.includes('feedback') || messageLower.includes('rubric')) {
-        steps.push("📊 Analyzing your grades and feedback...");
-      }
-      
-      if (messageLower.includes('exam') || messageLower.includes('test') || messageLower.includes('quiz')) {
-        steps.push("📋 Checking exam information and study materials...");
-      }
-      
-      if (messageLower.includes('syllabus') || messageLower.includes('schedule') || messageLower.includes('calendar')) {
-        steps.push("📅 Reviewing course schedule and syllabus...");
-      }
-      
-      if (messageLower.includes('help') || messageLower.includes('how') || messageLower.includes('explain')) {
-        steps.push("🤔 Understanding what you need help with...");
-        steps.push("📖 Gathering relevant explanations and examples...");
-      }
-      
-      if (messageLower.includes('submission') || messageLower.includes('submit') || messageLower.includes('turn in')) {
-        steps.push("📤 Checking submission requirements...");
-      }
-    } else {
-      steps.push("🔍 Searching across all your courses...");
-      
-      // Add more general reasoning for cross-course queries
-      if (messageLower.includes('compare') || messageLower.includes('similar') || messageLower.includes('different')) {
-        steps.push("⚖️ Comparing information across courses...");
-      }
-    }
-    
-    // Add contextual processing steps
-    if (messageLower.includes('?') || messageLower.includes('how') || messageLower.includes('what') || messageLower.includes('why')) {
-      steps.push("❓ Understanding your specific question...");
-    }
-    
-    // Final processing steps
-    steps.push("🔍 Finding the most relevant content...");
-    steps.push("💡 Connecting the pieces together...");
-    steps.push("✨ Crafting your personalized response...");
-    
-    setReasoningSteps(steps);
-    
-    // Animate through the steps
-    for (let i = 0; i < steps.length; i++) {
-      setCurrentReasoningStep(i);
-      // Wait between steps (varying times for realism)
-      const delay = i === 0 ? 800 : (i === steps.length - 1 ? 1200 : 600 + Math.random() * 600);
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-    
-    // Small delay before showing response
-    await new Promise(resolve => setTimeout(resolve, 300));
-    setIsReasoning(false);
-  };
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() && !selectedFile) return;
@@ -370,9 +313,6 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
         throw new Error('User not authenticated. Please sign in to chat.');
       }
 
-      // Start reasoning process
-      await simulateReasoning(messageContent, selectedCourseId);
-      
       setIsTyping(true);
       
       // Call backend RAG-enabled chat API with streaming
@@ -463,54 +403,174 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
 
   // Dashboard Content Component
   const DashboardContent = () => (
-    <div className="h-full flex flex-col p-3">
-      <div className="flex-1 space-y-4">
+    <div className="h-full flex flex-col p-6">
+      <div className="flex-1 space-y-6">
         {!selectedCourse ? (
-          <div className="text-center space-y-4">
-            <h2 className="text-xl font-bold text-black mb-2">Welcome to Claryfy</h2>
-            <p className="text-sm text-black mb-4">
-              Your intelligent Canvas assistant for streamlined course management and assignment tracking.
-            </p>
+          <div className="text-center space-y-6">
+            <div className="space-y-3">
+              <h2 className="text-2xl font-bold text-primary mb-2">Welcome to Claryfy</h2>
+            </div>
             
             {!isConnected ? (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 max-w-sm mx-auto">
-                <div className="text-black text-2xl mb-2">🔗</div>
-                <h3 className="text-base font-semibold text-black mb-1">Get Started</h3>
-                <p className="text-black text-sm mb-2">
-                  Let's get your Canvas content loaded up so you can start getting help with your courses!
-                </p>
-                <button
-                  onClick={() => setActiveTab('profile')}
-                  className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                >
-                  Get Started
-                </button>
+              <div className="bg-surface border border-subtle rounded-xl p-6 max-w-sm mx-auto shadow-sm">
+                {isConnecting ? (
+                  <div className="text-center space-y-4">
+                    <div className="flex justify-center space-x-1">
+                      <div className="w-2 h-2 bg-accent rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-primary">Connecting to Canvas...</h3>
+                    <p className="text-secondary text-sm">
+                      Loading your courses and content
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-accent text-3xl mb-3 flex justify-center">
+                      <Link className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-primary mb-2">Get Started</h3>
+                    <p className="text-secondary text-sm mb-4">
+                      Let's get your Canvas content loaded up so you can start getting help with your courses!
+                    </p>
+                    <button
+                      onClick={() => setActiveTab('profile')}
+                      className="btn btn-primary w-full"
+                    >
+                      Get Started
+                    </button>
+                  </>
+                )}
               </div>
             ) : (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3 max-w-sm mx-auto">
-                <div className="text-black text-2xl mb-2">📚</div>
-                <h3 className="text-base font-semibold text-black mb-1">Choose a Course</h3>
-                <p className="text-black text-sm mb-2">
-                  Select a course from the sidebar to view assignments, announcements, and files.
-                </p>
-                <div className="text-xs text-black">
+              <div 
+                className="bg-surface border border-subtle rounded-xl p-6 max-w-sm mx-auto shadow-sm cursor-pointer hover:bg-surface/80 transition-colors"
+                onClick={() => {
+                  setActiveTab('courses');
+                  if (sidebarCollapsed && setSidebarCollapsed) {
+                    setSidebarCollapsed(false);
+                  }
+                }}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-semibold text-primary">Choose a Course</h3>
+                  <div className="text-accent">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="text-xs text-secondary bg-muted px-3 py-2 rounded-lg">
                   Available Courses: {canvasData?.courses.length || 0}
                 </div>
               </div>
             )}
+
+            {/* Prompt Cards */}
+            <div className="max-w-4xl mx-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div className="bg-surface border border-subtle rounded-xl p-4 cursor-pointer hover:bg-surface/80 transition-colors shadow-sm">
+                  <div className="text-center">
+                    <div className="w-8 h-8 bg-accent/20 rounded-lg flex items-center justify-center mx-auto mb-2">
+                      <FileText className="w-4 h-4 text-accent" />
+                    </div>
+                    <p className="text-sm text-primary font-medium">Write a to-do list for a personal project or task</p>
+                  </div>
+                </div>
+                <div className="bg-surface border border-subtle rounded-xl p-4 cursor-pointer hover:bg-surface/80 transition-colors shadow-sm">
+                  <div className="text-center">
+                    <div className="w-8 h-8 bg-accent/20 rounded-lg flex items-center justify-center mx-auto mb-2">
+                      <Mail className="w-4 h-4 text-accent" />
+                    </div>
+                    <p className="text-sm text-primary font-medium">Generate an email to reply to a job offer</p>
+                  </div>
+                </div>
+                <div className="bg-surface border border-subtle rounded-xl p-4 cursor-pointer hover:bg-surface/80 transition-colors shadow-sm">
+                  <div className="text-center">
+                    <div className="w-8 h-8 bg-accent/20 rounded-lg flex items-center justify-center mx-auto mb-2">
+                      <FileText className="w-4 h-4 text-accent" />
+                    </div>
+                    <p className="text-sm text-primary font-medium">Summarize this article or text for me in one paragraph</p>
+                  </div>
+                </div>
+                <div className="bg-surface border border-subtle rounded-xl p-4 cursor-pointer hover:bg-surface/80 transition-colors shadow-sm">
+                  <div className="text-center">
+                    <div className="w-8 h-8 bg-accent/20 rounded-lg flex items-center justify-center mx-auto mb-2">
+                      <Bot className="w-4 h-4 text-accent" />
+                    </div>
+                    <p className="text-sm text-primary font-medium">How does AI work in a technical capacity</p>
+                  </div>
+                </div>
+              </div>
+              <div className="text-center">
+                <button className="text-secondary hover:text-primary text-sm flex items-center gap-2 mx-auto transition-colors">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh Prompts
+                </button>
+              </div>
+            </div>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-6">
             {/* Course Header */}
-            <div className="text-center mb-3">
-              <h1 className="text-lg font-bold text-black mb-1">
+            <div className="text-center">
+              <h1 className="text-xl font-bold text-primary mb-2">
                 {selectedCourse.courseCode}: {selectedCourse.shortName}
               </h1>
             </div>
 
+            {/* Prompt Cards for Course */}
+            <div className="max-w-4xl mx-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div className="bg-surface border border-subtle rounded-xl p-4 cursor-pointer hover:bg-surface/80 transition-colors shadow-sm">
+                  <div className="text-center">
+                    <div className="w-8 h-8 bg-accent/20 rounded-lg flex items-center justify-center mx-auto mb-2">
+                      <BookOpen className="w-4 h-4 text-accent" />
+                    </div>
+                    <p className="text-sm text-primary font-medium">Help me understand this week's assignments</p>
+                  </div>
+                </div>
+                <div className="bg-surface border border-subtle rounded-xl p-4 cursor-pointer hover:bg-surface/80 transition-colors shadow-sm">
+                  <div className="text-center">
+                    <div className="w-8 h-8 bg-accent/20 rounded-lg flex items-center justify-center mx-auto mb-2">
+                      <AlertCircle className="w-4 h-4 text-accent" />
+                    </div>
+                    <p className="text-sm text-primary font-medium">Summarize the latest announcements</p>
+                  </div>
+                </div>
+                <div className="bg-surface border border-subtle rounded-xl p-4 cursor-pointer hover:bg-surface/80 transition-colors shadow-sm">
+                  <div className="text-center">
+                    <div className="w-8 h-8 bg-accent/20 rounded-lg flex items-center justify-center mx-auto mb-2">
+                      <Calendar className="w-4 h-4 text-accent" />
+                    </div>
+                    <p className="text-sm text-primary font-medium">What's due this week in my courses</p>
+                  </div>
+                </div>
+                <div className="bg-surface border border-subtle rounded-xl p-4 cursor-pointer hover:bg-surface/80 transition-colors shadow-sm">
+                  <div className="text-center">
+                    <div className="w-8 h-8 bg-accent/20 rounded-lg flex items-center justify-center mx-auto mb-2">
+                      <Archive className="w-4 h-4 text-accent" />
+                    </div>
+                    <p className="text-sm text-primary font-medium">Find course materials and resources</p>
+                  </div>
+                </div>
+              </div>
+              <div className="text-center">
+                <button className="text-secondary hover:text-primary text-sm flex items-center gap-2 mx-auto transition-colors">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh Prompts
+                </button>
+              </div>
+            </div>
+
             {/* Recent Content Grid */}
-            <div className="flex-1 overflow-y-auto flex justify-center">
-              <div className="w-full max-w-md">
+            <div className="flex-1 overflow-y-auto">
+              <div className="w-full max-w-2xl mx-auto">
                 <RecentContent
                   assignments={courseAssignments}
                   announcements={courseAnnouncements}
@@ -538,33 +598,33 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
   const ChatMessages = () => (
     <div className="flex flex-col h-full max-h-[100dvh]">
       {/* Header */}
-      <div className="p-6 border-b border-gray-200 bg-white flex-shrink-0">
+      <div className="p-6 border-b border-subtle bg-surface flex-shrink-0">
         <div className="max-w-4xl mx-auto">
           {/* Course Header in Chat Mode */}
           {selectedCourse ? (
             <div className="text-center">
-              <h2 className="text-xl font-semibold text-black mb-1">
+              <h2 className="text-xl font-semibold text-primary mb-2">
                 {selectedCourse.courseCode}: {selectedCourse.shortName}
               </h2>
               {viewingFile && (
-                <div className="mt-2 text-sm text-black bg-blue-50 px-3 py-1 rounded-full inline-block">
+                <div className="mt-2 text-sm text-primary bg-accent/10 border border-accent/20 px-3 py-1 rounded-full inline-block">
                   Currently viewing: {viewingFile.display_name}
                 </div>
               )}
             </div>
           ) : (
             <div className="text-center">
-              <h2 className="text-xl font-semibold text-black mb-1">
+              <h2 className="text-xl font-semibold text-primary mb-2">
                 Welcome to Claryfy
               </h2>
-              <p className="text-sm text-black">
+              <p className="text-secondary text-sm">
                 {!isConnected 
                   ? "Get your Canvas content loaded up and select a course to start chatting" 
                   : "Select a course from the sidebar to get specific assistance"
                 }
               </p>
               {viewingFile && (
-                <div className="mt-2 text-sm text-black bg-blue-50 px-3 py-1 rounded-full inline-block">
+                <div className="mt-2 text-sm text-primary bg-accent/10 border border-accent/20 px-3 py-1 rounded-full inline-block">
                   Currently viewing: {viewingFile.display_name}
                 </div>
               )}
@@ -585,16 +645,16 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
               className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[80%] p-4 rounded-lg ${
+                className={`max-w-[80%] p-4 rounded-2xl shadow-sm ${
                   message.sender === 'user'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-black'
+                    ? 'bg-gradient-to-r from-accent to-accent/90 text-white'
+                    : 'bg-surface border border-subtle text-primary'
                 }`}
               >
                 {message.file && (
                   <div className="mb-2 p-2 bg-white bg-opacity-20 rounded text-sm">
                     <div className="flex items-center gap-2">
-                      <span>📎</span>
+                      <Paperclip className="w-4 h-4" />
                       <span className="font-medium">{message.file.name}</span>
                     </div>
                     <div className="text-xs opacity-75">
@@ -611,42 +671,42 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
                         remarkPlugins={[remarkGfm]}
                         components={{
                           // Custom styling for markdown elements
-                          h1: ({children}) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
-                          h2: ({children}) => <h2 className="text-base font-bold mb-2">{children}</h2>,
-                          h3: ({children}) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
-                          p: ({children}) => <p className="mb-2">{children}</p>,
-                          ul: ({children}) => <ul className="list-disc list-inside mb-2">{children}</ul>,
-                          ol: ({children}) => <ol className="list-decimal list-inside mb-2">{children}</ol>,
-                          li: ({children}) => <li className="mb-1">{children}</li>,
+                          h1: ({children}) => <h1 className="text-lg font-bold mb-3 mt-4">{children}</h1>,
+                          h2: ({children}) => <h2 className="text-base font-bold mb-2 mt-3">{children}</h2>,
+                          h3: ({children}) => <h3 className="text-sm font-bold mb-2 mt-2">{children}</h3>,
+                          p: ({children}) => <p className="mb-3 leading-relaxed">{children}</p>,
+                          ul: ({children}) => <ul className="list-disc list-inside mb-3 space-y-1">{children}</ul>,
+                          ol: ({children}) => <ol className="list-decimal list-inside mb-3 space-y-1">{children}</ol>,
+                          li: ({children}) => <li className="mb-0.5">{children}</li>,
                           code: ({children, className}) => (
-                            <code className={`bg-gray-200 px-1 py-0.5 rounded text-xs ${className || ''}`}>
+                            <code className={`bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono ${className || ''}`}>
                               {children}
                             </code>
                           ),
                           pre: ({children}) => (
-                            <pre className="bg-gray-200 p-2 rounded text-xs overflow-x-auto mb-2">
+                            <pre className="bg-gray-100 p-3 rounded-lg text-xs overflow-x-auto mb-3 font-mono leading-relaxed">
                               {children}
                             </pre>
                           ),
                           blockquote: ({children}) => (
-                            <blockquote className="border-l-4 border-gray-300 pl-4 italic mb-2">
+                            <blockquote className="border-l-4 border-gray-300 pl-4 italic mb-3 py-1 bg-gray-50 rounded-r">
                               {children}
                             </blockquote>
                           ),
                           table: ({children}) => (
-                            <div className="overflow-x-auto mb-2">
-                              <table className="min-w-full border border-gray-300">
+                            <div className="overflow-x-auto mb-3">
+                              <table className="min-w-full border border-gray-300 rounded-lg overflow-hidden">
                                 {children}
                               </table>
                             </div>
                           ),
                           th: ({children}) => (
-                            <th className="border border-gray-300 px-2 py-1 bg-gray-100 font-bold text-xs">
+                            <th className="border border-gray-300 px-3 py-2 bg-gray-100 font-bold text-xs">
                               {children}
                             </th>
                           ),
                           td: ({children}) => (
-                            <td className="border border-gray-300 px-2 py-1 text-xs">
+                            <td className="border border-gray-300 px-3 py-2 text-xs">
                               {children}
                             </td>
                           ),
@@ -657,59 +717,24 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
                     </div>
                   )}
                 </div>
-                <div className="text-xs mt-1 opacity-75">
-                  {formatTime(message.timestamp)}
-                </div>
               </div>
             </div>
           ))}
           
-          {/* AI Reasoning Process */}
-          {isReasoning && (
-            <div className="flex justify-start">
-              <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 text-black p-4 rounded-lg max-w-[80%]">
-                <div className="space-y-2">
-                  {reasoningSteps.map((step, index) => (
-                    <div 
-                      key={index}
-                      className={`flex items-center gap-2 transition-all duration-300 ${
-                        index <= currentReasoningStep 
-                          ? 'opacity-100 translate-x-0' 
-                          : 'opacity-30 translate-x-2'
-                      }`}
-                    >
-                      <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                        index === currentReasoningStep 
-                          ? 'bg-purple-500 animate-pulse' 
-                          : index < currentReasoningStep
-                          ? 'bg-green-500'
-                          : 'bg-gray-300'
-                      }`} />
-                      <span className={`text-sm ${
-                        index === currentReasoningStep 
-                          ? 'font-medium text-purple-700' 
-                          : index < currentReasoningStep
-                          ? 'text-green-700'
-                          : 'text-gray-500'
-                      }`}>
-                        {step}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+
           
           {/* Typing Indicator at bottom */}
           {isTyping && (
             <div className="flex justify-start">
-              <div className="bg-gray-100 text-black p-4 rounded-lg">
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                </div>
+              <div className="text-primary text-sm">
+                <span className="inline-flex items-center gap-1">
+                  Thinking
+                  <span className="flex gap-0.5">
+                    <span className="w-1 h-1 bg-accent rounded-full animate-bounce"></span>
+                    <span className="w-1 h-1 bg-accent rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></span>
+                    <span className="w-1 h-1 bg-accent rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
+                  </span>
+                </span>
               </div>
             </div>
           )}
@@ -731,78 +756,116 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
 
         {/* File Selection Display */}
         {selectedFile && (
-          <div className="px-4 py-2 border-t border-gray-200 bg-gray-50 flex-shrink-0">
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                <span>📎</span>
-                <span className="font-medium text-black">{selectedFile.name}</span>
-                <span className="text-black text-xs">({formatFileSize(selectedFile.size)})</span>
+          <div className="px-6 py-3 border-t border-subtle bg-surface/50 flex-shrink-0">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-3">
+                  <Paperclip className="w-4 h-4 text-accent" />
+                  <div>
+                    <span className="font-medium text-primary">{selectedFile.name}</span>
+                    <span className="text-secondary text-xs ml-2">({formatFileSize(selectedFile.size)})</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedFile(null)}
+                  className="text-secondary hover:text-primary p-1 transition-colors"
+                  title="Remove file"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <button
-                onClick={() => setSelectedFile(null)}
-                className="text-black hover:text-black p-1"
-                title="Remove file"
-              >
-                ×
-              </button>
             </div>
           </div>
         )}
 
-        {/* Always Visible Chat Input Area */}
-        <div className="border-t border-gray-200 p-4 bg-white flex-shrink-0">
-          <div className="flex items-end gap-3">
-            <div className="flex-1">
-              <textarea
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
+        {/* Modern Chat Input Area */}
+        <div className="border-t border-subtle p-6 bg-surface flex-shrink-0">
+          <div className="max-w-4xl mx-auto space-y-4">
+            {/* Main Input Field */}
+            <div className="relative">
+              <div className="relative">
+                <textarea
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                  placeholder={
+                    !selectedCourse 
+                      ? "Ask about Canvas or connect your account to get started..." 
+                      : `Ask about ${selectedCourse.courseCode} or upload a file...`
                   }
-                }}
-                placeholder={
-                  !selectedCourse 
-                    ? "Ask about Canvas or connect your account to get started..." 
-                    : `Ask about ${selectedCourse.courseCode} or upload a file...`
-                }
-                className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-black"
-                rows={1}
-                style={{ minHeight: '44px', maxHeight: '120px' }}
-              />
+                  className="w-full p-4 pr-12 border-2 border-transparent bg-white rounded-2xl resize-none focus:outline-none focus:ring-0 focus:border-gradient-to-r focus:from-blue-400 focus:to-purple-500 text-primary placeholder-secondary"
+                  rows={1}
+                  style={{ 
+                    minHeight: '56px', 
+                    maxHeight: '120px',
+                    background: 'linear-gradient(white, white) padding-box, linear-gradient(135deg, #60a5fa, #a855f7) border-box'
+                  }}
+                />
+                <button
+                  onClick={handleSendMessage}
+                  disabled={!inputValue.trim() && !selectedFile}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-white hover:bg-gray-50 disabled:bg-muted disabled:cursor-not-allowed text-black w-8 h-8 rounded-full transition-all flex items-center justify-center shadow-sm border border-gray-300"
+                  title="Send message"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
             </div>
             
-            <div className="flex items-center gap-2">
-              {/* File Upload Button */}
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="bg-gray-600 hover:bg-gray-700 text-white w-10 h-10 rounded-lg transition-colors flex items-center justify-center"
-                title="Upload file"
-              >
-                <span className="text-lg">📎</span>
-              </button>
+            {/* Action Buttons and Character Counter */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {/* Attach Button */}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2 px-3 py-2 text-secondary hover:text-primary transition-colors rounded-lg hover:bg-surface/50"
+                  title="Attach file"
+                >
+                  <Paperclip className="w-4 h-4" />
+                  <span className="text-sm">Attach</span>
+                </button>
+                
+                {/* Voice Message Button */}
+                <button
+                  className="flex items-center gap-2 px-3 py-2 text-secondary hover:text-primary transition-colors rounded-lg hover:bg-surface/50"
+                  title="Voice message"
+                >
+                  <Mic className="w-4 h-4" />
+                  <span className="text-sm">Voice Message</span>
+                </button>
+                
+                {/* Browse Prompts Button */}
+                <button
+                  className="flex items-center gap-2 px-3 py-2 text-secondary hover:text-primary transition-colors rounded-lg hover:bg-surface/50"
+                  title="Browse prompts"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span className="text-sm">Browse Prompts</span>
+                </button>
+              </div>
               
-              {/* Send Button */}
-              <button
-                onClick={handleSendMessage}
-                disabled={!inputValue.trim() && !selectedFile}
-                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white w-10 h-10 rounded-lg transition-colors flex items-center justify-center"
-                title="Send message"
-              >
-                <span className="text-lg">→</span>
-              </button>
+              {/* Character Counter */}
+              <div className="text-xs text-secondary">
+                {inputValue.length} / 3,000
+              </div>
             </div>
+            
+            {/* Hidden File Input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              onChange={handleFileSelect}
+              className="hidden"
+              accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.gif"
+            />
           </div>
-          
-          {/* Hidden File Input */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            onChange={handleFileSelect}
-            className="hidden"
-            accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.gif"
-          />
         </div>
       </div>
     </div>

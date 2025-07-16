@@ -503,18 +503,18 @@ export default function Dashboard() {
     const contentType = file.content_type || '';
     const mimeClass = file.mime_class || '';
     
-    if (contentType.includes('pdf')) return '📄';
-    if (contentType.includes('word') || mimeClass === 'doc') return '📝';
-    if (contentType.includes('excel') || contentType.includes('spreadsheet')) return '📊';
-    if (contentType.includes('powerpoint') || contentType.includes('presentation')) return '📈';
-    if (contentType.includes('image') || mimeClass === 'image') return '🖼️';
-    if (contentType.includes('video') || mimeClass === 'video') return '🎥';
-    if (contentType.includes('audio') || mimeClass === 'audio') return '🎵';
-    if (contentType.includes('zip') || contentType.includes('archive')) return '📦';
-    if (contentType.includes('text') || mimeClass === 'text') return '📄';
-    if (contentType.includes('html') || mimeClass === 'html') return '🌐';
-    if (contentType.includes('javascript') || contentType.includes('json')) return '⚙️';
-    return '📁';
+    if (contentType.includes('pdf')) return 'FileText';
+    if (contentType.includes('word') || mimeClass === 'doc') return 'FileText';
+    if (contentType.includes('excel') || contentType.includes('spreadsheet')) return 'FileSpreadsheet';
+    if (contentType.includes('powerpoint') || contentType.includes('presentation')) return 'Presentation';
+    if (contentType.includes('image') || mimeClass === 'image') return 'Image';
+    if (contentType.includes('video') || mimeClass === 'video') return 'Video';
+    if (contentType.includes('audio') || mimeClass === 'audio') return 'FileAudio';
+    if (contentType.includes('zip') || contentType.includes('archive')) return 'Archive';
+    if (contentType.includes('text') || mimeClass === 'text') return 'FileText';
+    if (contentType.includes('html') || mimeClass === 'html') return 'Globe';
+    if (contentType.includes('javascript') || contentType.includes('json')) return 'Settings';
+    return 'Archive';
   };
 
   // Chat handlers for sidebar
@@ -531,7 +531,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-background flex">
       {/* Sidebar Component */}
       <Sidebar
         sidebarCollapsed={sidebarCollapsed}
@@ -574,18 +574,18 @@ export default function Dashboard() {
       />
 
       {/* Main Content */}
-      <div className="flex-1 bg-white min-w-0 flex">
+      <div className="flex-1 bg-background min-w-0 flex">
         {/* Mobile sidebar overlay */}
         {!sidebarCollapsed && (
           <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
             onClick={() => setSidebarCollapsed(true)}
           />
         )}
 
         {/* Left Side Viewers */}
         {(selectedRecording || viewingFile || selectedAssignment || selectedAnnouncement) && (
-          <div className="w-1/2 h-screen">
+          <div className="w-1/2 h-screen bg-surface">
             {selectedRecording && (
               <RecordingViewer
                 recording={selectedRecording}
@@ -614,7 +614,7 @@ export default function Dashboard() {
         )}
 
         {/* ChatGPT Style Interface - Right Side */}
-        <div className={`${(selectedRecording || viewingFile || selectedAssignment || selectedAnnouncement) ? "w-1/2" : "w-full"} h-screen`}>
+        <div className={`${(selectedRecording || viewingFile || selectedAssignment || selectedAnnouncement) ? "w-1/2" : "w-full"} h-screen bg-background`}>
           <ChatGPTStyleInterface
             ref={chatInterfaceRef}
             canvasData={canvasData}
@@ -637,6 +637,9 @@ export default function Dashboard() {
             selectedAnnouncement={selectedAnnouncement}
             openAnnouncement={openAnnouncement}
             closeAnnouncement={closeAnnouncement}
+            isConnecting={isConnecting}
+            sidebarCollapsed={sidebarCollapsed}
+            setSidebarCollapsed={setSidebarCollapsed}
           />
         </div>
       </div>

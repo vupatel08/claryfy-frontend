@@ -2,9 +2,40 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { CanvasData, File } from '../types/canvas';
+import type { CanvasData, File } from '../types/canvas';
 import { useAuth } from '../contexts/AuthContext';
 import { UserProfileService, ConversationService, RecordingService } from '../services/supabase';
+import { 
+  MessageSquare, 
+  ChevronLeft, 
+  BookOpen, 
+  User, 
+  ChevronDown, 
+  ChevronRight,
+  Mic,
+  MicOff,
+  Pause,
+  Play,
+  Square,
+  FileText,
+  Video,
+  FileAudio,
+  Image,
+  Archive,
+  Globe,
+  Settings,
+  HelpCircle,
+  Download,
+  Upload,
+  Plus,
+  Search,
+  Calendar,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Info,
+  History
+} from 'lucide-react';
 
 interface Conversation {
   id: string;
@@ -493,113 +524,233 @@ export default function Sidebar({
   };
 
   return (
-    <div className={`${sidebarCollapsed ? 'w-16' : 'w-full sm:w-80 md:w-96 lg:w-1/3 xl:w-96'} bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ${!sidebarCollapsed ? 'max-w-sm md:max-w-md lg:max-w-lg' : ''} ${sidebarCollapsed ? '' : 'fixed md:relative z-50 h-full md:h-auto shadow-lg md:shadow-none'}`}>
+    <div className={`${sidebarCollapsed ? 'w-16' : 'w-96'} bg-surface/80 backdrop-blur-sm border-r border-subtle flex flex-col transition-normal ${sidebarCollapsed ? '' : 'relative h-screen shadow-lg'}`}>
       
       {/* Sidebar Header */}
-      <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+      <div className="p-6 border-b border-subtle flex justify-between items-center">
         {sidebarCollapsed ? (
           <button
             onClick={() => setSidebarCollapsed(false)}
-            className="flex items-center gap-2 hover:bg-gray-100 p-2 rounded-lg transition-colors w-full justify-center"
+            className="flex items-center justify-center w-full p-3 hover:bg-surface/50 rounded-lg transition-normal group"
             title="Expand sidebar"
           >
-            <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-blue-500 rounded-lg flex items-center justify-center text-black font-bold text-sm">
-              C
-            </div>
+            <span className="font-semibold text-primary text-lg">C</span>
           </button>
         ) : (
           <>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-blue-500 rounded-lg flex items-center justify-center text-black font-bold text-sm">
-                C
-              </div>
-              <span className="font-semibold text-black">Claryfy</span>
+            <div className="flex items-center gap-3">
+              <span className="font-semibold text-primary text-lg">Claryfy</span>
             </div>
             <button
               onClick={() => setSidebarCollapsed(true)}
-              className="p-1 rounded-md bg-gray-100 hover:bg-gray-200 transition-colors"
+              className="p-2 rounded-md hover:bg-surface/50 transition-normal"
               title="Collapse sidebar"
             >
-              <span className="text-black text-sm">◀️</span>
+              <ChevronLeft className="w-4 h-4 text-secondary" />
             </button>
           </>
         )}
       </div>
 
+      {/* Collapsed Sidebar Icons */}
+      {sidebarCollapsed && (
+        <div className="relative flex-1 flex flex-col items-center py-4 space-y-5">
+          {/* Overlay to expand sidebar on click anywhere in icon area except icons themselves */}
+          <button
+            className="absolute inset-0 w-full h-full z-0 bg-transparent cursor-pointer"
+            style={{ pointerEvents: 'auto' }}
+            aria-label="Expand sidebar"
+            tabIndex={-1}
+            onClick={() => setSidebarCollapsed(false)}
+          />
+          <div className="relative z-10 flex flex-col items-center space-y-5 w-full">
+            {/* New Chat Icon - Only show when authenticated and connected */}
+            {isAuthenticated && isConnected && (
+              <button
+                onClick={e => { e.stopPropagation(); setSidebarCollapsed(false); handleNewChat && handleNewChat(); }}
+                className="w-10 h-10 flex items-center justify-center text-primary hover:bg-surface/50 rounded-lg transition-normal group relative cursor-pointer"
+                title="New Chat"
+                type="button"
+              >
+                <Plus className="w-5 h-5" />
+                <div className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-20">
+                  New Chat
+                </div>
+              </button>
+            )}
+
+            {/* Recent Chats Icon - Only show when authenticated and connected */}
+            {isAuthenticated && isConnected && conversations.length > 0 && (
+              <button
+                onClick={e => { e.stopPropagation(); setSidebarCollapsed(false); toggleChatSection('conversations'); }}
+                className="w-10 h-10 flex items-center justify-center text-primary hover:bg-surface/50 rounded-lg transition-normal relative group cursor-pointer"
+                title="Recent Chats"
+                type="button"
+              >
+                <History className="w-5 h-5" />
+                <div className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-20">
+                  Recent Chats
+                </div>
+                <span className="absolute -top-3 -right-3 bg-accent text-black border border-black rounded-full w-7 h-7 text-xs flex items-center justify-center font-semibold">
+                  {conversations.length}
+                </span>
+              </button>
+            )}
+
+            {/* Course-specific icons - Only show when course is selected */}
+            {selectedCourseId && (
+              <>
+                {/* Assignments Icon */}
+                <button
+                  onClick={e => { e.stopPropagation(); setSidebarCollapsed(false); toggleSection('assignments'); }}
+                  className="w-10 h-10 flex items-center justify-center text-primary hover:bg-surface/50 rounded-lg transition-normal relative group cursor-pointer"
+                  title="Assignments"
+                  type="button"
+                >
+                  <FileText className="w-5 h-5" />
+                  <div className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-20">
+                    Assignments
+                  </div>
+                  <span className="absolute -top-3 -right-3 bg-error text-black border border-black rounded-full w-7 h-7 text-xs flex items-center justify-center font-semibold">
+                    {courseAssignments.length}
+                  </span>
+                </button>
+
+                {/* Announcements Icon */}
+                <button
+                  onClick={e => { e.stopPropagation(); setSidebarCollapsed(false); toggleSection('announcements'); }}
+                  className="w-10 h-10 flex items-center justify-center text-primary hover:bg-surface/50 rounded-lg transition-normal relative group cursor-pointer"
+                  title="Announcements"
+                  type="button"
+                >
+                  <AlertCircle className="w-5 h-5" />
+                  <div className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-20">
+                    Announcements
+                  </div>
+                  <span className="absolute -top-3 -right-3 bg-success text-black border border-black rounded-full w-7 h-7 text-xs flex items-center justify-center font-semibold">
+                    {courseAnnouncements.length}
+                  </span>
+                </button>
+
+                {/* Files Icon */}
+                <button
+                  onClick={e => { e.stopPropagation(); setSidebarCollapsed(false); toggleSection('files'); }}
+                  className="w-10 h-10 flex items-center justify-center text-primary hover:bg-surface/50 rounded-lg transition-normal relative group cursor-pointer"
+                  title="Files"
+                  type="button"
+                >
+                  <Archive className="w-5 h-5" />
+                  <div className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-20">
+                    Files
+                  </div>
+                  <span className="absolute -top-3 -right-3 bg-accent text-black border border-black rounded-full w-7 h-7 text-xs flex items-center justify-center font-semibold">
+                    {courseFiles.length}
+                  </span>
+                </button>
+
+                {/* Recordings Icon */}
+                <button
+                  onClick={e => { e.stopPropagation(); setSidebarCollapsed(false); toggleSection('recordings'); }}
+                  className="w-10 h-10 flex items-center justify-center text-primary hover:bg-surface/50 rounded-lg transition-normal relative group cursor-pointer"
+                  title="Lecture Recordings"
+                  type="button"
+                >
+                  <Video className="w-5 h-5" />
+                  <div className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-20">
+                    Lecture Recordings
+                  </div>
+                  <span className="absolute -top-3 -right-3 bg-warning text-black border border-black rounded-full w-7 h-7 text-xs flex items-center justify-center font-semibold">
+                    {recordings.length}
+                  </span>
+                </button>
+              </>
+            )}
+
+            {/* Sidebar Open Icon at Bottom */}
+            <div className="mt-auto pt-4">
+              <button
+                onClick={() => setSidebarCollapsed(false)}
+                className="w-10 h-10 flex items-center justify-center text-primary hover:bg-surface/50 rounded-lg transition-normal group cursor-pointer"
+                title="Expand sidebar"
+                type="button"
+              >
+                <ChevronRight className="w-5 h-5" />
+                <div className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-20">
+                  Expand sidebar
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {!sidebarCollapsed && (
         <>
           {/* Tab Navigation */}
-          <div className="flex border-b border-gray-200">
+          <div className="flex border-b border-subtle">
             <button
               onClick={() => setActiveTab('courses')}
-              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              className={`flex-1 px-6 py-4 text-sm font-medium transition-normal flex items-center justify-center gap-2 ${
                 activeTab === 'courses' 
-                  ? 'text-black border-b-2 border-blue-600 bg-blue-50' 
-                  : 'text-black hover:text-black hover:bg-gray-50'
+                  ? 'text-accent border-b-2 border-accent bg-surface' 
+                  : 'text-secondary hover:text-primary hover:bg-surface'
               }`}
             >
-              📚 Courses
+              <BookOpen className="w-4 h-4" />
+              Courses
             </button>
             <button
               onClick={() => setActiveTab('profile')}
-              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              className={`flex-1 px-6 py-4 text-sm font-medium transition-normal flex items-center justify-center gap-2 ${
                 activeTab === 'profile' 
-                  ? 'text-black border-b-2 border-blue-600 bg-blue-50' 
-                  : 'text-black hover:text-black hover:bg-gray-50'
+                  ? 'text-accent border-b-2 border-accent bg-surface' 
+                  : 'text-secondary hover:text-primary hover:bg-surface'
               }`}
             >
-              👤 Profile
+              <User className="w-4 h-4" />
+              Profile
             </button>
           </div>
 
           {/* Tab Content */}
           <div className="flex-1 overflow-y-auto">
             {activeTab === 'courses' && (
-              <div className="p-4 space-y-4">
-                {/* Chat Assistant Section - Moved to top */}
+              <div className="p-6 space-y-6">
+                {/* Chat Section */}
                 {isAuthenticated && isConnected && (
-                  <div className="space-y-2">
-                    <div className="text-xs font-medium text-black uppercase tracking-wide">
-                      💬 Chat Assistant
-                    </div>
-
+                  <div className="space-y-3">
                     {/* New Chat Button */}
-                    <button
-                      onClick={handleNewChat}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
-                    >
-                      <span>💬</span>
-                      New Chat
-                    </button>
+                    <div className="border border-subtle rounded-lg">
+                      <button
+                        onClick={handleNewChat}
+                        className="w-full px-4 py-3 flex items-center gap-3 text-left transition-normal hover:bg-surface/50"
+                      >
+                        <Plus className="w-4 h-4 text-secondary" />
+                        <span className="text-sm font-medium text-primary">New Chat</span>
+                      </button>
+                    </div>
 
                     {/* Chat History - Conditional based on course selection */}
                     {conversations.length > 0 && (
-                      <div className="border border-gray-200 rounded-lg">
+                      <div className="border border-subtle rounded-lg">
                         <div
-                          className={`px-3 py-2 cursor-pointer flex justify-between items-center transition-colors ${
-                            collapsedChatSections.conversations ? 'bg-gray-50 hover:bg-gray-100' : 'bg-gray-100'
+                          className={`px-4 py-3 cursor-pointer flex justify-between items-center transition-normal ${
+                            collapsedChatSections.conversations ? 'bg-surface hover:bg-surface/80' : 'bg-surface/80'
                           }`}
                           onClick={() => toggleChatSection('conversations')}
                         >
-                          <div className="flex items-center gap-2">
-                            <span className="text-black">
-                              {selectedCourseId ? '🎓' : '📚'}
-                            </span>
-                            <span className="text-sm font-medium text-black">
+                          <div className="flex items-center gap-3">
+                            <MessageSquare className="w-4 h-4 text-secondary" />
+                            <span className="text-sm font-medium text-primary">
                               {selectedCourseId ? `${selectedCourse?.courseCode} Chats` : 'Recent Chats'}
                             </span>
-                            <span className="bg-purple-500 text-white rounded-full px-2 py-0.5 text-xs font-medium">
-                              {selectedCourseId 
-                                ? conversations.filter(c => c.course_id === selectedCourseId).length
-                                : conversations.length
-                              }
+                            <span className="bg-accent text-white rounded-full px-2 py-0.5 text-xs font-medium">
+                              {conversations.length}
                             </span>
                           </div>
-                          <span className={`transform transition-transform text-black text-xs ${
+                          <ChevronDown className={`w-4 h-4 text-secondary transform transition-transform ${
                             collapsedChatSections.conversations ? '' : 'rotate-180'
-                          }`}>
-                            ▼
-                          </span>
+                          }`} />
                         </div>
                         {!collapsedChatSections.conversations && (
                           <div className="max-h-48 overflow-y-auto">
@@ -608,19 +759,16 @@ export default function Sidebar({
                                 Loading conversations...
                               </div>
                             ) : (
-                              (selectedCourseId 
-                                ? conversations.filter(c => c.course_id === selectedCourseId)
-                                : conversations
-                              ).slice(0, 10).map(conversation => {
+                              conversations.slice(0, 10).map(conversation => {
                                 const conversationCourse = canvasData?.courses.find(course => course.id === conversation.course_id);
                                 return (
                                   <div 
                                     key={conversation.id} 
-                                    className="px-3 py-2 border-t border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                                    className="px-4 py-3 border-t border-subtle hover:bg-surface/50 cursor-pointer transition-normal"
                                     onClick={() => handleLoadConversation(conversation.id)}
                                   >
-                                    <div className="text-xs font-medium text-black truncate">{conversation.title}</div>
-                                    <div className="text-xs text-gray-600">
+                                    <div className="text-xs font-medium text-primary truncate">{conversation.title}</div>
+                                    <div className="text-xs text-secondary">
                                       {selectedCourseId 
                                         ? formatDate(conversation.last_message_at)
                                         : `${conversationCourse ? conversationCourse.courseCode : 'General'} • ${formatDate(conversation.last_message_at)}`
@@ -639,9 +787,12 @@ export default function Sidebar({
 
                 {/* Loading Message */}
                 {showLoadingMessage && canvasData && (
-                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-xs">
-                    <div className="font-medium text-black mb-1">⚡ Optimized Loading</div>
-                    <div className="text-black">
+                  <div className="p-4 bg-success/10 border border-success/20 rounded-lg text-xs">
+                    <div className="font-medium text-success mb-2 flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" />
+                      Optimized Loading
+                    </div>
+                    <div className="text-secondary">
                       Loaded {canvasData.courses.length} courses, {canvasData.assignments.length} assignments, 
                       and {canvasData.announcements.length} announcements using parallel processing
                     </div>
@@ -650,12 +801,12 @@ export default function Sidebar({
 
                 {/* Course Selection */}
                 <div>
-                  <h3 className="text-sm font-medium text-black mb-2">Select Course</h3>
+                  <h3 className="text-sm font-medium text-primary mb-3">Select Course</h3>
                   <select
                     value={selectedCourseId || ''}
                     onChange={(e) => setSelectedCourseId(e.target.value ? Number(e.target.value) : null)}
                     disabled={!canvasData}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:bg-gray-50 disabled:text-black disabled:cursor-not-allowed"
+                    className="w-full input"
                   >
                     <option value="">
                       {canvasData ? 'Select a course' : 'Load your content first'}
@@ -669,28 +820,29 @@ export default function Sidebar({
                 </div>
 
                 {/* Recording Controls Section - Collapsible */}
-                <div className="border border-gray-200 rounded-lg">
+                <div className="border border-subtle rounded-lg">
                   <div
-                    className={`px-3 py-2 cursor-pointer flex justify-between items-center transition-colors ${
-                      collapsedSections.recordings ? 'bg-gray-50 hover:bg-gray-100' : 'bg-gray-100'
+                    className={`px-4 py-3 cursor-pointer flex justify-between items-center transition-normal ${
+                      collapsedSections.recordings ? 'bg-surface hover:bg-surface/80' : 'bg-surface/80'
                     }`}
                     onClick={() => toggleSection('recordings')}
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="text-black">🎥</span>
-                      <span className="text-sm font-medium text-black">Lecture Recording</span>
+                    <div className="flex items-center gap-3">
+                      <Video className="w-4 h-4 text-secondary" />
+                      <span className="text-sm font-medium text-primary">Lecture Recording</span>
+                      <span className="bg-warning/20 text-warning border border-warning/30 rounded-full px-2 py-0.5 text-xs font-medium">
+                        {recordings.length}
+                      </span>
                       {isRecording && (
-                        <div className="flex items-center gap-1">
-                          <div className={`w-2 h-2 rounded-full ${isPaused ? 'bg-yellow-500' : 'bg-red-500'} animate-pulse`}></div>
-                          <span className="text-xs text-black">{isPaused ? 'Paused' : 'Recording'}</span>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${isPaused ? 'bg-warning' : 'bg-error'} animate-pulse`}></div>
+                          <span className="text-xs text-secondary">{isPaused ? 'Paused' : 'Recording'}</span>
                         </div>
                       )}
                     </div>
-                    <span className={`transform transition-transform text-black text-xs ${
+                    <ChevronDown className={`w-4 h-4 text-secondary transform transition-transform ${
                       collapsedSections.recordings ? '' : 'rotate-180'
-                    }`}>
-                      ▼
-                    </span>
+                    }`} />
                   </div>
                   {!collapsedSections.recordings && (
                     <div className="p-3 bg-gray-50">
@@ -709,31 +861,56 @@ export default function Sidebar({
                       )}
 
                       {/* Recording Controls */}
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 mb-3">
                         {!isRecording ? (
                           <button
                             onClick={handleStartRecording}
                             disabled={isProcessing || !selectedCourseId}
-                            className="bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                              isProcessing || !selectedCourseId
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-red-500 hover:bg-red-600 text-white shadow-sm hover:shadow-md'
+                            }`}
                             title={!selectedCourseId ? "Select a course to start recording" : "Start Recording"}
                           >
-                            {isProcessing ? '⏳ Processing...' : '● Record'}
+                            {isProcessing ? (
+                              <>
+                                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                <span>Processing...</span>
+                              </>
+                            ) : (
+                              <>
+                                <div className="w-2 h-2 bg-white rounded-full"></div>
+                                <span>Record</span>
+                              </>
+                            )}
                           </button>
                         ) : (
                           <>
                             <button
                               onClick={handlePauseRecording}
-                              className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md text-xs font-medium transition-all shadow-sm hover:shadow-md"
                               title={isPaused ? "Resume Recording" : "Pause Recording"}
                             >
-                              {isPaused ? '▶ Resume' : '⏸ Pause'}
+                              {isPaused ? (
+                                <>
+                                  <Play className="w-3 h-3" />
+                                  <span>Resume</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Pause className="w-3 h-3" />
+                                  <span>Pause</span>
+                                </>
+                              )}
                             </button>
                             <button
                               onClick={handleStopRecording}
-                              className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white rounded-md text-xs font-medium transition-all shadow-sm hover:shadow-md"
                               title="Stop Recording"
                             >
-                              ⏹ Stop
+                              <Square className="w-3 h-3" />
+                              <span>Stop</span>
                             </button>
                           </>
                         )}
@@ -763,31 +940,53 @@ export default function Sidebar({
                           )}
                         </div>
                         
-                        <div className="max-h-32 overflow-y-auto space-y-1">
+                        <div className="max-h-32 overflow-y-auto space-y-2">
                           {recordings.length === 0 ? (
-                            <div className="text-xs text-gray-500 italic">No recordings yet</div>
+                            <div className="text-xs text-gray-500 italic text-center py-2">No recordings yet</div>
                           ) : (
                             recordings.slice(0, 5).map((recording) => (
                               <div 
                                 key={recording.id} 
-                                className="bg-white p-2 rounded border text-xs cursor-pointer hover:bg-blue-50 transition-colors"
+                                className={`p-3 rounded-lg cursor-pointer transition-all hover:scale-[1.02] ${
+                                  recording.status === 'completed' 
+                                    ? 'bg-green-50 border border-green-200 hover:bg-green-100' 
+                                    : recording.status === 'failed'
+                                    ? 'bg-red-50 border border-red-200 hover:bg-red-100'
+                                    : 'bg-yellow-50 border border-yellow-200 hover:bg-yellow-100'
+                                }`}
                                 onClick={() => openRecording(recording)}
                                 title={recording.summary ? `Click to view summary: ${recording.summary.substring(0, 100)}...` : 'Processing...'}
                               >
-                                <div className="font-medium text-gray-800 truncate">
-                                  {recording.title}
-                                </div>
-                                <div className="text-gray-500 flex justify-between items-center">
-                                  <span>{formatDuration(recording.duration || 0)}</span>
-                                  <span className={`px-1 py-0.5 rounded text-xs ${
+                                <div className="flex items-center gap-3">
+                                  <div className={`p-2 rounded-full ${
                                     recording.status === 'completed' 
-                                      ? 'bg-green-100 text-green-700' 
+                                      ? 'bg-green-100 text-green-600' 
                                       : recording.status === 'failed'
-                                      ? 'bg-red-100 text-red-700'
-                                      : 'bg-yellow-100 text-yellow-700'
+                                      ? 'bg-red-100 text-red-600'
+                                      : 'bg-yellow-100 text-yellow-600'
                                   }`}>
-                                    {recording.status}
-                                  </span>
+                                    <Video className="w-4 h-4" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-gray-800 truncate text-sm">
+                                      {recording.title}
+                                    </div>
+                                    <div className="flex items-center justify-between mt-1">
+                                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                                        <Clock className="w-3 h-3" />
+                                        <span>{formatDuration(recording.duration || 0)}</span>
+                                      </div>
+                                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                        recording.status === 'completed' 
+                                          ? 'bg-green-200 text-green-700' 
+                                          : recording.status === 'failed'
+                                          ? 'bg-red-200 text-red-700'
+                                          : 'bg-yellow-200 text-yellow-700'
+                                      }`}>
+                                        {recording.status}
+                                      </span>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                             ))
@@ -800,47 +999,45 @@ export default function Sidebar({
 
                 {/* Course Sections - Only show when course is selected */}
                 {selectedCourse && (
-                  <div className="space-y-2">
-                    <div className="text-xs font-medium text-black uppercase tracking-wide">
+                  <div className="space-y-4">
+                    <div className="text-xs font-medium text-secondary uppercase tracking-wide">
                       {selectedCourse.courseCode}
                     </div>
 
                     {/* Assignments */}
-                    <div className="border border-gray-200 rounded-lg">
+                    <div className="border border-subtle rounded-lg">
                       <div
-                        className={`px-3 py-2 cursor-pointer flex justify-between items-center transition-colors ${
-                          collapsedSections.assignments ? 'bg-gray-50 hover:bg-gray-100' : 'bg-gray-100'
+                        className={`px-4 py-3 cursor-pointer flex justify-between items-center transition-normal ${
+                          collapsedSections.assignments ? 'bg-surface hover:bg-surface/80' : 'bg-surface/80'
                         }`}
                         onClick={() => toggleSection('assignments')}
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="text-black">📝</span>
-                          <span className="text-sm font-medium text-black">Assignments</span>
-                          <span className="bg-red-500 text-black rounded-full px-2 py-0.5 text-xs font-medium">
+                        <div className="flex items-center gap-3">
+                          <FileText className="w-4 h-4 text-secondary" />
+                          <span className="text-sm font-medium text-primary">Assignments</span>
+                          <span className="bg-error/20 text-error border border-error/30 rounded-full px-2 py-0.5 text-xs font-medium">
                             {courseAssignments.length}
                           </span>
                         </div>
-                        <span className={`transform transition-transform text-black text-xs ${
+                        <ChevronDown className={`w-4 h-4 text-secondary transform transition-transform ${
                           collapsedSections.assignments ? '' : 'rotate-180'
-                        }`}>
-                          ▼
-                        </span>
+                        }`} />
                       </div>
                       {!collapsedSections.assignments && (
                         <div className="max-h-48 overflow-y-auto">
                           {courseAssignments.length === 0 ? (
-                            <div className="text-center py-4 text-black text-xs">
+                            <div className="text-center py-4 text-secondary text-xs">
                               No assignments found
                             </div>
                           ) : (
                             courseAssignments.slice(0, 10).map(assignment => (
                               <div 
                                 key={assignment.id} 
-                                className="px-3 py-2 border-t border-gray-100 hover:bg-gray-50 cursor-pointer"
+                                className="px-4 py-3 border-t border-subtle hover:bg-surface/50 cursor-pointer transition-normal"
                                 onClick={() => openAssignment(assignment)}
                               >
-                                <div className="text-xs font-medium text-black truncate">{assignment.name}</div>
-                                <div className="text-xs text-black">
+                                <div className="text-xs font-medium text-primary truncate">{assignment.name}</div>
+                                <div className="text-xs text-secondary">
                                   {assignment.due_at ? `Due: ${formatDate(assignment.due_at)}` : 'No due date'}
                                 </div>
                               </div>
@@ -851,41 +1048,39 @@ export default function Sidebar({
                     </div>
 
                     {/* Announcements */}
-                    <div className="border border-gray-200 rounded-lg">
+                    <div className="border border-subtle rounded-lg">
                       <div
-                        className={`px-3 py-2 cursor-pointer flex justify-between items-center transition-colors ${
-                          collapsedSections.announcements ? 'bg-gray-50 hover:bg-gray-100' : 'bg-gray-100'
+                        className={`px-4 py-3 cursor-pointer flex justify-between items-center transition-normal ${
+                          collapsedSections.announcements ? 'bg-surface hover:bg-surface/80' : 'bg-surface/80'
                         }`}
                         onClick={() => toggleSection('announcements')}
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="text-black">📢</span>
-                          <span className="text-sm font-medium text-black">Announcements</span>
-                          <span className="bg-green-500 text-black rounded-full px-2 py-0.5 text-xs font-medium">
+                        <div className="flex items-center gap-3">
+                          <AlertCircle className="w-4 h-4 text-secondary" />
+                          <span className="text-sm font-medium text-primary">Announcements</span>
+                          <span className="bg-success/20 text-success border border-success/30 rounded-full px-2 py-0.5 text-xs font-medium">
                             {courseAnnouncements.length}
                           </span>
                         </div>
-                        <span className={`transform transition-transform text-black text-xs ${
+                        <ChevronDown className={`w-4 h-4 text-secondary transform transition-transform ${
                           collapsedSections.announcements ? '' : 'rotate-180'
-                        }`}>
-                          ▼
-                        </span>
+                        }`} />
                       </div>
                       {!collapsedSections.announcements && (
                         <div className="max-h-48 overflow-y-auto">
                           {courseAnnouncements.length === 0 ? (
-                            <div className="text-center py-4 text-black text-xs">
+                            <div className="text-center py-4 text-secondary text-xs">
                               No announcements found
                             </div>
                           ) : (
                             courseAnnouncements.slice(0, 10).map(announcement => (
                               <div 
                                 key={announcement.id} 
-                                className="px-3 py-2 border-t border-gray-100 hover:bg-gray-50 cursor-pointer"
+                                className="px-4 py-3 border-t border-subtle hover:bg-surface/50 cursor-pointer transition-normal"
                                 onClick={() => openAnnouncement(announcement)}
                               >
-                                <div className="text-xs font-medium text-black truncate">{announcement.title}</div>
-                                <div className="text-xs text-black">
+                                <div className="text-xs font-medium text-primary truncate">{announcement.title}</div>
+                                <div className="text-xs text-secondary">
                                   Posted: {formatDate(announcement.posted_at)}
                                 </div>
                               </div>
@@ -896,44 +1091,42 @@ export default function Sidebar({
                     </div>
 
                     {/* Files */}
-                    <div className="border border-gray-200 rounded-lg">
+                    <div className="border border-subtle rounded-lg">
                       <div
-                        className={`px-3 py-2 cursor-pointer flex justify-between items-center transition-colors ${
-                          collapsedSections.files ? 'bg-gray-50 hover:bg-gray-100' : 'bg-gray-100'
+                        className={`px-4 py-3 cursor-pointer flex justify-between items-center transition-normal ${
+                          collapsedSections.files ? 'bg-surface hover:bg-surface/80' : 'bg-surface/80'
                         }`}
                         onClick={() => toggleSection('files')}
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="text-black">📁</span>
-                          <span className="text-sm font-medium text-black">Files</span>
-                          <span className="bg-blue-500 text-black rounded-full px-2 py-0.5 text-xs font-medium">
+                        <div className="flex items-center gap-3">
+                          <Archive className="w-4 h-4 text-secondary" />
+                          <span className="text-sm font-medium text-primary">Files</span>
+                          <span className="bg-accent/20 text-accent border border-accent/30 rounded-full px-2 py-0.5 text-xs font-medium">
                             {courseFiles.length}
                           </span>
                         </div>
-                        <span className={`transform transition-transform text-black text-xs ${
+                        <ChevronDown className={`w-4 h-4 text-secondary transform transition-transform ${
                           collapsedSections.files ? '' : 'rotate-180'
-                        }`}>
-                          ▼
-                        </span>
+                        }`} />
                       </div>
                       {!collapsedSections.files && (
                         <div className="max-h-48 overflow-y-auto">
                           {courseFiles.length === 0 ? (
-                            <div className="text-center py-4 text-black text-xs">
+                            <div className="text-center py-4 text-secondary text-xs">
                               No files found
                             </div>
                           ) : (
                             courseFiles.slice(0, 10).map(file => (
                               <div 
                                 key={file.id} 
-                                className="px-3 py-2 border-t border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                                className="px-4 py-3 border-t border-subtle hover:bg-surface/50 cursor-pointer transition-normal"
                                 onClick={() => openFile(file)}
                               >
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm">{getFileIcon(file)}</span>
+                                <div className="flex items-center gap-3">
+                                  <FileText className="w-4 h-4 text-secondary" />
                                   <div className="flex-1 min-w-0">
-                                    <div className="text-xs font-medium text-black truncate">{file.display_name}</div>
-                                    <div className="text-xs text-black">
+                                    <div className="text-xs font-medium text-primary truncate">{file.display_name}</div>
+                                    <div className="text-xs text-secondary">
                                       {file.size ? formatFileSize(file.size) : 'Unknown size'}
                                     </div>
                                   </div>
@@ -954,41 +1147,47 @@ export default function Sidebar({
             )}
 
             {activeTab === 'profile' && (
-              <div className="p-4 space-y-4">
+              <div className="p-6 space-y-6">
                 {/* Authentication Section */}
                 {!isAuthenticated ? (
                   <div className="space-y-4">
                     <div className="text-center">
-                      <h3 className="text-lg font-semibold text-black mb-2">Welcome to Claryfy</h3>
-                      <p className="text-sm text-gray-600">Create an account or sign in to get started</p>
+                      <h3 className="text-base font-semibold text-primary mb-1">Welcome to Claryfy</h3>
+                      <p className="text-xs text-secondary">Create an account or sign in to get started</p>
                     </div>
 
-                    <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+                    <div className="flex border border-subtle rounded-lg overflow-hidden bg-gray-100">
                       <button
                         onClick={() => setAuthMode('signin')}
-                        className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
+                        className={`flex-1 py-2 px-3 text-xs font-medium transition-normal flex items-center justify-center gap-1 ${
                           authMode === 'signin' 
-                            ? 'bg-green-500 text-white' 
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            ? 'bg-white text-black shadow-sm' 
+                            : 'bg-transparent text-gray-500 hover:text-gray-700'
                         }`}
                       >
-                        Sign In
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                        </svg>
+                        Login
                       </button>
                       <button
                         onClick={() => setAuthMode('signup')}
-                        className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
+                        className={`flex-1 py-2 px-3 text-xs font-medium transition-normal flex items-center justify-center gap-1 ${
                           authMode === 'signup' 
-                            ? 'bg-green-500 text-white' 
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            ? 'bg-white text-black shadow-sm' 
+                            : 'bg-transparent text-gray-500 hover:text-gray-700'
                         }`}
                       >
-                        Sign Up
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                        </svg>
+                        Register
                       </button>
                     </div>
 
                     <form onSubmit={handleAuth} className="space-y-3">
                       <div>
-                        <label className="block text-sm font-medium text-black mb-1">
+                        <label className="block text-xs font-medium text-primary mb-1">
                           Email
                         </label>
                         <input
@@ -997,12 +1196,12 @@ export default function Sidebar({
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="Enter your email"
                           required
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                          className="w-full input text-xs py-2"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-black mb-1">
+                        <label className="block text-xs font-medium text-primary mb-1">
                           Password
                         </label>
                         <input
@@ -1011,10 +1210,10 @@ export default function Sidebar({
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder={authMode === 'signup' ? 'Create a password' : 'Enter your password'}
                           required
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                          className="w-full input text-xs py-2"
                         />
                         {authMode === 'signup' && (
-                          <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
+                          <p className="text-xs text-muted mt-1">Minimum 6 characters</p>
                         )}
                       </div>
 
@@ -1081,60 +1280,49 @@ export default function Sidebar({
                     </form>
 
                     {authError && (
-                      <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-600">
+                      <div className="p-4 bg-error/10 border border-error/20 rounded-lg text-sm text-error">
                         {authError}
                       </div>
                     )}
 
                     {authSuccess && (
-                      <div className="p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-600">
+                      <div className="p-4 bg-success/10 border border-success/20 rounded-lg text-sm text-success">
                         {authSuccess}
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {/* User Account Info */}
-                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="space-y-3">
+                    {/* Combined Profile Card */}
+                    <div className="p-4 bg-surface border border-subtle rounded-lg">
                       <div className="flex items-center gap-3 mb-3">
-                        <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                          {user?.email?.charAt(0).toUpperCase() || 'U'}
+                        <div className="w-12 h-12 bg-accent/20 rounded-full flex items-center justify-center text-accent font-semibold text-lg border-2 border-accent/30">
+                          {canvasData?.profile?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
                         </div>
-                        <div>
-                          <h3 className="font-semibold text-black">{user?.email}</h3>
-                          <p className="text-sm text-gray-600">Claryfy Account</p>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-primary text-sm truncate">
+                            {canvasData?.profile?.name || user?.email}
+                          </h3>
+                          <p className="text-xs text-secondary">
+                            {canvasData?.profile ? 'Canvas Profile' : 'Claryfy Account'}
+                          </p>
                         </div>
                       </div>
-                      <div className="space-y-2">
+                      <div className="flex gap-2">
                         <Link 
                           href="/profile"
-                          className="block w-full text-center bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700 transition-colors"
+                          className="flex-1 btn btn-primary text-xs py-2"
                         >
-                          Manage Account
+                          Manage
                         </Link>
                         <button
                           onClick={handleSignOut}
-                          className="w-full text-center bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition-colors"
+                          className="flex-1 btn btn-secondary text-xs py-2"
                         >
                           Sign Out
                         </button>
                       </div>
                     </div>
-
-                    {/* Canvas Profile Info */}
-                    {canvasData?.profile && (
-                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                            {canvasData.profile.name?.charAt(0).toUpperCase() || 'C'}
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-black">{canvasData.profile.name}</h3>
-                            <p className="text-sm text-gray-600">Canvas Profile</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -1147,12 +1335,12 @@ export default function Sidebar({
                         <p className="mt-2 text-sm text-gray-600">Checking Canvas credentials...</p>
                       </div>
                     ) : hasSavedCredentials ? (
-                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-                          <span className="text-sm font-medium text-black">Connecting to Canvas automatically...</span>
+                      <div className="p-6 bg-surface border border-subtle rounded-lg">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-3 h-3 bg-accent rounded-full animate-pulse"></div>
+                          <span className="text-sm font-medium text-primary">Connecting to Canvas automatically...</span>
                         </div>
-                        <p className="text-xs text-gray-600">Using your saved credentials</p>
+                        <p className="text-xs text-secondary">Using your saved credentials</p>
                       </div>
                     ) : (
                       <>
@@ -1240,50 +1428,49 @@ export default function Sidebar({
                     )}
                   </div>
                 ) : isAuthenticated && isConnected ? (
-                  <div className="space-y-4">
-                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                        <span className="text-sm font-medium text-black">Connected to Canvas</span>
+                  <div className="space-y-3">
+                    <div className="p-4 bg-surface border border-subtle rounded-lg">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-2 h-2 bg-success rounded-full"></div>
+                        <span className="text-sm font-medium text-primary">Connected to Canvas</span>
                       </div>
-                      <p className="text-xs text-black">Domain: {domain}</p>
-                      <p className="text-xs text-black">
-                        Courses: {canvasData?.courses.length || 0}
-                      </p>
+                      <div className="space-y-1 text-xs text-secondary">
+                        <div>Domain: {domain}</div>
+                        <div>Courses: {canvasData?.courses.length || 0}</div>
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={handleRefresh}
+                          disabled={isConnecting}
+                          className="flex-1 btn btn-primary text-xs py-2 flex items-center justify-center gap-1"
+                        >
+                          {isConnecting ? (
+                            <>
+                              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              Syncing...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                              Sync
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsConnected(false);
+                            setCanvasData(null);
+                            setToken('');
+                            setSelectedCourseId(null);
+                          }}
+                          className="flex-1 btn btn-secondary text-xs py-2"
+                        >
+                          Disconnect
+                        </button>
+                      </div>
                     </div>
-
-                    {/* PHASE 4: Refresh Button */}
-                    <button
-                      onClick={handleRefresh}
-                      disabled={isConnecting}
-                      className="w-full bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-                    >
-                      {isConnecting ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Refreshing...
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
-                          Refresh & Sync Data
-                        </>
-                      )}
-                    </button>
-                    
-                    <button
-                      onClick={() => {
-                        setIsConnected(false);
-                        setCanvasData(null);
-                        setToken('');
-                        setSelectedCourseId(null);
-                      }}
-                      className="w-full bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700 transition-colors"
-                    >
-                      Disconnect from Canvas
-                    </button>
                   </div>
                 ) : null}
               </div>
