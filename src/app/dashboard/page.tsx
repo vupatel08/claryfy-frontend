@@ -9,6 +9,8 @@ import ChatGPTStyleInterface, { ChatGPTStyleInterfaceRef } from '../../component
 import { CanvasData } from '../../types/canvas';
 import { useAuth } from '../../contexts/AuthContext';
 import { UserProfileService } from '../../services/supabase';
+import AssignmentViewer from '../../components/AssignmentViewer';
+import AnnouncementViewer from '../../components/AnnouncementViewer';
 
 export default function Dashboard() {
   const [canvasData, setCanvasData] = useState<CanvasData | null>(null);
@@ -27,6 +29,7 @@ export default function Dashboard() {
     assignments: true,
     announcements: true,
     files: true,
+    recordings: true,
   });
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<'courses' | 'profile'>('courses');
@@ -34,6 +37,8 @@ export default function Dashboard() {
   const [closedRecentBoxes, setClosedRecentBoxes] = useState<Set<string>>(new Set());
   const [viewingFile, setViewingFile] = useState<File | null>(null);
   const [selectedRecording, setSelectedRecording] = useState<any | null>(null);
+  const [selectedAssignment, setSelectedAssignment] = useState<any | null>(null);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<any | null>(null);
   const { user, isAuthenticated } = useAuth();
   
   // Chat interface ref for communication from sidebar
@@ -381,7 +386,7 @@ export default function Dashboard() {
     }
   };
 
-  const toggleSection = (section: keyof typeof collapsedSections) => {
+  const toggleSection = (section: 'assignments' | 'announcements' | 'files' | 'recordings') => {
     setCollapsedSections(prev => ({
       ...prev,
       [section]: !prev[section]
@@ -435,21 +440,63 @@ export default function Dashboard() {
   };
 
   const openFile = (file: File) => {
+    // Close all other viewers
+    setSelectedRecording(null);
+    setSelectedAssignment(null);
+    setSelectedAnnouncement(null);
+    // Open file viewer
     setViewingFile(file);
-    setSelectedRecording(null); // Close recording if viewing file
+    setSidebarCollapsed(true); // Close sidebar when opening file
   };
 
   const closeFile = () => {
     setViewingFile(null);
+    setSidebarCollapsed(false); // Reopen sidebar when closing file
   };
 
   const openRecording = (recording: any) => {
+    // Close all other viewers
+    setViewingFile(null);
+    setSelectedAssignment(null);
+    setSelectedAnnouncement(null);
+    // Open recording viewer
     setSelectedRecording(recording);
-    setViewingFile(null); // Close file if viewing recording
+    setSidebarCollapsed(true); // Close sidebar when opening recording
   };
 
   const closeRecording = () => {
     setSelectedRecording(null);
+    setSidebarCollapsed(false); // Reopen sidebar when closing recording
+  };
+
+  const openAssignment = (assignment: any) => {
+    // Close all other viewers
+    setSelectedAnnouncement(null);
+    setViewingFile(null);
+    setSelectedRecording(null);
+    // Open assignment viewer
+    setSelectedAssignment(assignment);
+    setSidebarCollapsed(true); // Close sidebar when opening assignment
+  };
+
+  const closeAssignment = () => {
+    setSelectedAssignment(null);
+    setSidebarCollapsed(false); // Reopen sidebar when closing assignment
+  };
+
+  const openAnnouncement = (announcement: any) => {
+    // Close all other viewers
+    setSelectedAssignment(null);
+    setViewingFile(null);
+    setSelectedRecording(null);
+    // Open announcement viewer
+    setSelectedAnnouncement(announcement);
+    setSidebarCollapsed(true); // Close sidebar when opening announcement
+  };
+
+  const closeAnnouncement = () => {
+    setSelectedAnnouncement(null);
+    setSidebarCollapsed(false); // Reopen sidebar when closing announcement
   };
 
   const getFileIcon = (file: File): string => {
@@ -522,6 +569,8 @@ export default function Dashboard() {
             openRecording={openRecording}
         onNewChat={handleNewChat}
         onLoadConversation={handleLoadConversation}
+        openAssignment={openAssignment}
+        openAnnouncement={openAnnouncement}
       />
 
       {/* Main Content */}
@@ -534,18 +583,38 @@ export default function Dashboard() {
           />
         )}
 
-        {/* Recording Viewer - Left Side */}
-        {selectedRecording && (
+        {/* Left Side Viewers */}
+        {(selectedRecording || viewingFile || selectedAssignment || selectedAnnouncement) && (
           <div className="w-1/2 h-screen">
-            <RecordingViewer
-              recording={selectedRecording}
-              onClose={closeRecording}
-            />
+            {selectedRecording && (
+              <RecordingViewer
+                recording={selectedRecording}
+                onClose={closeRecording}
+              />
+            )}
+            {viewingFile && (
+              <FileViewer
+                file={viewingFile}
+                onClose={closeFile}
+              />
+            )}
+            {selectedAssignment && (
+              <AssignmentViewer
+                assignment={selectedAssignment}
+                onClose={closeAssignment}
+              />
+            )}
+            {selectedAnnouncement && (
+              <AnnouncementViewer
+                announcement={selectedAnnouncement}
+                onClose={closeAnnouncement}
+              />
+            )}
           </div>
         )}
 
         {/* ChatGPT Style Interface - Right Side */}
-        <div className={selectedRecording ? "w-1/2" : "w-full"}>
+        <div className={`${(selectedRecording || viewingFile || selectedAssignment || selectedAnnouncement) ? "w-1/2" : "w-full"} h-screen`}>
           <ChatGPTStyleInterface
             ref={chatInterfaceRef}
             canvasData={canvasData}
@@ -562,6 +631,12 @@ export default function Dashboard() {
             viewingFile={viewingFile}
             openFile={openFile}
             closeFile={closeFile}
+            selectedAssignment={selectedAssignment}
+            openAssignment={openAssignment}
+            closeAssignment={closeAssignment}
+            selectedAnnouncement={selectedAnnouncement}
+            openAnnouncement={openAnnouncement}
+            closeAnnouncement={closeAnnouncement}
           />
         </div>
       </div>

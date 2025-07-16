@@ -63,6 +63,14 @@ export default function FileViewer({ file, onClose }: FileViewerProps) {
     return contentType.includes('pdf') || fileExtension === 'pdf';
   };
 
+  const isOfficeDocument = () => {
+    const { fileExtension, contentType } = getFileInfo();
+    const officeExtensions = ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'];
+    return officeExtensions.includes(fileExtension) || 
+           contentType.includes('officedocument') ||
+           contentType.includes('application/vnd.openxmlformats');
+  };
+
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -96,22 +104,40 @@ export default function FileViewer({ file, onClose }: FileViewerProps) {
       );
     }
 
-    // Show PDFs inline with PDF.js CDN viewer (like working test)
+    // Show PDFs inline with PDF.js CDN viewer
     if (isPDF()) {
-      // Use PDF.js viewer with the file URL (same as working test)
       const pdfViewerUrl = `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(backendFileUrl)}`;
       
-              return (
-          <div className="w-full h-full bg-gray-100">
-            <iframe
-              src={pdfViewerUrl}
-              className="w-full h-full border-0"
-              title={file.display_name}
-              onLoad={() => console.log('PDF.js viewer loaded successfully')}
-              onError={() => console.error('PDF.js viewer failed to load')}
-            />
-          </div>
-        );
+      return (
+        <div className="w-full h-full bg-gray-100">
+          <iframe
+            src={pdfViewerUrl}
+            className="w-full h-full border-0"
+            title={file.display_name}
+            onLoad={() => console.log('PDF.js viewer loaded successfully')}
+            onError={() => console.error('PDF.js viewer failed to load')}
+          />
+        </div>
+      );
+    }
+
+    // Show Office documents with Microsoft Office Online viewer
+    if (isOfficeDocument()) {
+      const { fileExtension } = getFileInfo();
+      const officeViewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(backendFileUrl)}`;
+      
+      return (
+        <div className="w-full h-full bg-gray-100">
+          <iframe
+            src={officeViewerUrl}
+            className="w-full h-full border-0"
+            title={file.display_name}
+            onLoad={() => console.log('Office Online viewer loaded successfully')}
+            onError={() => console.error('Office Online viewer failed to load')}
+            sandbox="allow-scripts allow-same-origin allow-forms"
+          />
+        </div>
+      );
     }
 
     // For all other file types, show download button only
@@ -161,7 +187,7 @@ export default function FileViewer({ file, onClose }: FileViewerProps) {
   };
 
   return (
-    <div className="h-full flex flex-col bg-white border-r border-gray-200">
+    <div className="h-full w-full flex flex-col bg-white border-r border-gray-200">
       {/* File Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
         <div className="flex-1 min-w-0">
@@ -173,7 +199,7 @@ export default function FileViewer({ file, onClose }: FileViewerProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {isPDF() && (
+          {(isPDF() || isOfficeDocument()) && (
             <a
               href={backendFileUrl}
               download={file.display_name}

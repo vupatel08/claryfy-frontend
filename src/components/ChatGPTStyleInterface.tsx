@@ -48,6 +48,12 @@ interface ChatGPTStyleInterfaceProps {
   viewingFile: File | null;
   openFile: (file: File) => void;
   closeFile: () => void;
+  selectedAssignment: any | null;
+  openAssignment: (assignment: any) => void;
+  closeAssignment: () => void;
+  selectedAnnouncement: any | null;
+  openAnnouncement: (announcement: any) => void;
+  closeAnnouncement: () => void;
 }
 
 const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleInterfaceProps>(({
@@ -65,6 +71,12 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
   viewingFile,
   openFile,
   closeFile,
+  selectedAssignment,
+  openAssignment,
+  closeAssignment,
+  selectedAnnouncement,
+  openAnnouncement,
+  closeAnnouncement,
 }, ref) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -451,71 +463,70 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
 
   // Dashboard Content Component
   const DashboardContent = () => (
-    <div className="flex-1 flex items-center justify-center p-6">
-      <div className="max-w-4xl w-full space-y-8">
+    <div className="h-full flex flex-col p-3">
+      <div className="flex-1 space-y-4">
         {!selectedCourse ? (
-          <div className="text-center space-y-8">
-            <h2 className="text-3xl font-bold text-black mb-4">Welcome to Claryfy</h2>
-            <p className="text-lg text-black mb-8">
+          <div className="text-center space-y-4">
+            <h2 className="text-xl font-bold text-black mb-2">Welcome to Claryfy</h2>
+            <p className="text-sm text-black mb-4">
               Your intelligent Canvas assistant for streamlined course management and assignment tracking.
             </p>
             
             {!isConnected ? (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 max-w-md mx-auto">
-                <div className="text-black text-4xl mb-4">🔗</div>
-                <h3 className="text-xl font-semibold text-black mb-2">Get Started</h3>
-                <p className="text-black mb-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 max-w-sm mx-auto">
+                <div className="text-black text-2xl mb-2">🔗</div>
+                <h3 className="text-base font-semibold text-black mb-1">Get Started</h3>
+                <p className="text-black text-sm mb-2">
                   Let's get your Canvas content loaded up so you can start getting help with your courses!
                 </p>
                 <button
                   onClick={() => setActiveTab('profile')}
-                  className="bg-blue-600 text-black px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                  className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
                 >
                   Get Started
                 </button>
               </div>
             ) : (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-6 max-w-md mx-auto">
-                <div className="text-black text-4xl mb-4">📚</div>
-                <h3 className="text-xl font-semibold text-black mb-2">Choose a Course</h3>
-                <p className="text-black mb-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 max-w-sm mx-auto">
+                <div className="text-black text-2xl mb-2">📚</div>
+                <h3 className="text-base font-semibold text-black mb-1">Choose a Course</h3>
+                <p className="text-black text-sm mb-2">
                   Select a course from the sidebar to view assignments, announcements, and files.
                 </p>
-                <div className="text-sm text-black">
+                <div className="text-xs text-black">
                   Available Courses: {canvasData?.courses.length || 0}
                 </div>
               </div>
             )}
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-3">
             {/* Course Header */}
-            <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-black mb-2">
+            <div className="text-center mb-3">
+              <h1 className="text-lg font-bold text-black mb-1">
                 {selectedCourse.courseCode}: {selectedCourse.shortName}
               </h1>
-              <div className="flex flex-wrap gap-4 text-sm text-black justify-center">
-                <span>📝 {courseAssignments.length} Assignments</span>
-                <span>📢 {courseAnnouncements.length} Announcements</span>
-                <span>📁 {courseFiles.length} Files</span>
-              </div>
             </div>
 
-            {/* Recent Content Grid - Remove any event capturing */}
-            <div style={{ pointerEvents: 'auto' }}>
-              <RecentContent
-                assignments={courseAssignments}
-                announcements={courseAnnouncements}
-                files={courseFiles}
-                expandedItems={expandedItems}
-                toggleExpanded={toggleExpanded}
-                formatDate={formatDate}
-                formatFileSize={formatFileSize}
-                getFileIcon={getFileIcon}
-                openFile={openFile}
-                closedRecentBoxes={closedRecentBoxes}
-                closeRecentBox={closeRecentBox}
-              />
+            {/* Recent Content Grid */}
+            <div className="flex-1 overflow-y-auto flex justify-center">
+              <div className="w-full max-w-md">
+                <RecentContent
+                  assignments={courseAssignments}
+                  announcements={courseAnnouncements}
+                  files={courseFiles}
+                  expandedItems={expandedItems}
+                  toggleExpanded={toggleExpanded}
+                  formatDate={formatDate}
+                  formatFileSize={formatFileSize}
+                  getFileIcon={getFileIcon}
+                  openFile={openFile}
+                  openAssignment={openAssignment}
+                  openAnnouncement={openAnnouncement}
+                  closedRecentBoxes={closedRecentBoxes}
+                  closeRecentBox={closeRecentBox}
+                />
+              </div>
             </div>
           </div>
         )}
@@ -535,11 +546,6 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
               <h2 className="text-xl font-semibold text-black mb-1">
                 {selectedCourse.courseCode}: {selectedCourse.shortName}
               </h2>
-              <div className="flex flex-wrap gap-3 text-xs text-black justify-center">
-                <span>📝 {courseAssignments.length} Assignments</span>
-                <span>📢 {courseAnnouncements.length} Announcements</span>
-                <span>📁 {courseFiles.length} Files</span>
-              </div>
               {viewingFile && (
                 <div className="mt-2 text-sm text-black bg-blue-50 px-3 py-1 rounded-full inline-block">
                   Currently viewing: {viewingFile.display_name}
@@ -565,42 +571,7 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
             </div>
           )}
 
-          {/* Conversation History Toggle */}
-          {conversations.length > 0 && (
-            <div className="flex justify-center mt-2">
-              <button
-                onClick={() => setShowConversationHistory(!showConversationHistory)}
-                className="bg-gray-100 hover:bg-gray-200 text-black px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-              >
-                {showConversationHistory ? '📚 Hide History' : '📚 Show History'}
-              </button>
-            </div>
-          )}
 
-          {/* Conversation History */}
-          {showConversationHistory && conversations.length > 0 && (
-            <div className="bg-gray-50 rounded-lg p-4 mt-4">
-              <h3 className="text-sm font-semibold text-black mb-2">Recent Conversations</h3>
-              <div className="space-y-2 max-h-40 overflow-y-auto">
-                {conversations.map((conversation) => (
-                  <button
-                    key={conversation.id}
-                    onClick={() => loadConversationMessages(conversation.id)}
-                    className={`w-full text-left p-2 rounded text-sm transition-colors ${
-                      currentConversationId === conversation.id
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'hover:bg-gray-100 text-black'
-                    }`}
-                  >
-                    <div className="font-medium truncate">{conversation.title}</div>
-                    <div className="text-xs opacity-75">
-                      {new Date(conversation.last_message_at).toLocaleDateString()}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -750,25 +721,18 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
   );
 
   return (
-    <div className="flex-1 flex h-[100dvh]">
-      {/* File Viewer (Left Side) - Fixed 50% width when viewing file */}
-      {viewingFile && (
-        <div className="w-1/2 h-full hidden md:block border-r border-gray-200">
-          <FileViewer file={viewingFile} onClose={closeFile} />
-        </div>
-      )}
-      
-      {/* Chat Interface (Right Side or Full Width) - Takes remaining 50% or full width */}
-      <div className={`flex flex-col h-full ${viewingFile ? 'w-1/2' : 'w-full'}`}>
+    <div className="h-full flex flex-col">
+      {/* Chat Interface - Full Height */}
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Main Content Area */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-hidden">
           {!isChatMode ? <DashboardContent /> : <ChatMessages />}
         </div>
 
         {/* File Selection Display */}
         {selectedFile && (
-          <div className="px-6 py-3 border-t border-gray-200 bg-gray-50 flex-shrink-0">
-            <div className="max-w-4xl mx-auto flex items-center justify-between text-sm">
+          <div className="px-4 py-2 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+            <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
                 <span>📎</span>
                 <span className="font-medium text-black">{selectedFile.name}</span>
@@ -786,50 +750,48 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
         )}
 
         {/* Always Visible Chat Input Area */}
-        <div className="border-t border-gray-200 p-6 bg-white flex-shrink-0">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-end gap-3">
-              <div className="flex-1">
-                <textarea
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
-                  placeholder={
-                    !selectedCourse 
-                      ? "Ask about Canvas or connect your account to get started..." 
-                      : `Ask about ${selectedCourse.courseCode} or upload a file...`
+        <div className="border-t border-gray-200 p-4 bg-white flex-shrink-0">
+          <div className="flex items-end gap-3">
+            <div className="flex-1">
+              <textarea
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
                   }
-                  className="w-full p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-black"
-                  rows={1}
-                  style={{ minHeight: '56px', maxHeight: '200px' }}
-                />
-              </div>
+                }}
+                placeholder={
+                  !selectedCourse 
+                    ? "Ask about Canvas or connect your account to get started..." 
+                    : `Ask about ${selectedCourse.courseCode} or upload a file...`
+                }
+                className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-black"
+                rows={1}
+                style={{ minHeight: '44px', maxHeight: '120px' }}
+              />
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {/* File Upload Button */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-gray-600 hover:bg-gray-700 text-white w-10 h-10 rounded-lg transition-colors flex items-center justify-center"
+                title="Upload file"
+              >
+                <span className="text-lg">📎</span>
+              </button>
               
-              <div className="flex items-center gap-2">
-                {/* File Upload Button */}
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="bg-gray-600 hover:bg-gray-700 text-white w-12 h-12 rounded-lg transition-colors flex items-center justify-center"
-                  title="Upload file"
-                >
-                  <span className="text-lg">📎</span>
-                </button>
-                
-                {/* Send Button */}
-                <button
-                  onClick={handleSendMessage}
-                  disabled={!inputValue.trim() && !selectedFile}
-                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white w-12 h-12 rounded-lg transition-colors flex items-center justify-center"
-                  title="Send message"
-                >
-                  <span className="text-lg">→</span>
-                </button>
-              </div>
+              {/* Send Button */}
+              <button
+                onClick={handleSendMessage}
+                disabled={!inputValue.trim() && !selectedFile}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white w-10 h-10 rounded-lg transition-colors flex items-center justify-center"
+                title="Send message"
+              >
+                <span className="text-lg">→</span>
+              </button>
             </div>
           </div>
           
@@ -843,13 +805,6 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
           />
         </div>
       </div>
-      
-      {/* Mobile File Viewer - Full Screen */}
-      {viewingFile && (
-        <div className="fixed inset-0 bg-white z-50 md:hidden">
-          <FileViewer file={viewingFile} onClose={closeFile} />
-        </div>
-      )}
     </div>
   );
 });

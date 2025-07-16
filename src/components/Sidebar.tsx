@@ -42,8 +42,9 @@ interface SidebarProps {
     assignments: boolean;
     announcements: boolean;
     files: boolean;
+    recordings: boolean;
   };
-  toggleSection: (section: 'assignments' | 'announcements' | 'files') => void;
+  toggleSection: (section: 'assignments' | 'announcements' | 'files' | 'recordings') => void;
   expandedItems: {[key: string]: boolean};
   toggleExpanded: (type: string, id: number) => void;
   formatDate: (dateString: string | null) => string;
@@ -55,6 +56,8 @@ interface SidebarProps {
   // New chat props
   onNewChat?: () => void;
   onLoadConversation?: (conversationId: string) => void;
+  openAssignment: (assignment: any) => void;
+  openAnnouncement: (announcement: any) => void;
 }
 
 export default function Sidebar({
@@ -94,6 +97,8 @@ export default function Sidebar({
   // New chat props
   onNewChat,
   onLoadConversation,
+  openAssignment,
+  openAnnouncement,
 }: SidebarProps) {
   const { user, isAuthenticated, signIn, signUp, signOut, loading: authLoading } = useAuth();
   
@@ -551,13 +556,86 @@ export default function Sidebar({
           <div className="flex-1 overflow-y-auto">
             {activeTab === 'courses' && (
               <div className="p-4 space-y-4">
-                {/* Connection Status */}
-                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                  <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                  <span className="text-sm font-medium text-black">
-                    {isConnected ? 'Connected to Canvas' : 'Not Connected'}
-                  </span>
-                </div>
+                {/* Chat Assistant Section - Moved to top */}
+                {isAuthenticated && isConnected && (
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-black uppercase tracking-wide">
+                      💬 Chat Assistant
+                    </div>
+
+                    {/* New Chat Button */}
+                    <button
+                      onClick={handleNewChat}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                    >
+                      <span>💬</span>
+                      New Chat
+                    </button>
+
+                    {/* Chat History - Conditional based on course selection */}
+                    {conversations.length > 0 && (
+                      <div className="border border-gray-200 rounded-lg">
+                        <div
+                          className={`px-3 py-2 cursor-pointer flex justify-between items-center transition-colors ${
+                            collapsedChatSections.conversations ? 'bg-gray-50 hover:bg-gray-100' : 'bg-gray-100'
+                          }`}
+                          onClick={() => toggleChatSection('conversations')}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-black">
+                              {selectedCourseId ? '🎓' : '📚'}
+                            </span>
+                            <span className="text-sm font-medium text-black">
+                              {selectedCourseId ? `${selectedCourse?.courseCode} Chats` : 'Recent Chats'}
+                            </span>
+                            <span className="bg-purple-500 text-white rounded-full px-2 py-0.5 text-xs font-medium">
+                              {selectedCourseId 
+                                ? conversations.filter(c => c.course_id === selectedCourseId).length
+                                : conversations.length
+                              }
+                            </span>
+                          </div>
+                          <span className={`transform transition-transform text-black text-xs ${
+                            collapsedChatSections.conversations ? '' : 'rotate-180'
+                          }`}>
+                            ▼
+                          </span>
+                        </div>
+                        {!collapsedChatSections.conversations && (
+                          <div className="max-h-48 overflow-y-auto">
+                            {loadingConversations ? (
+                              <div className="text-center py-4 text-black text-xs">
+                                Loading conversations...
+                              </div>
+                            ) : (
+                              (selectedCourseId 
+                                ? conversations.filter(c => c.course_id === selectedCourseId)
+                                : conversations
+                              ).slice(0, 10).map(conversation => {
+                                const conversationCourse = canvasData?.courses.find(course => course.id === conversation.course_id);
+                                return (
+                                  <div 
+                                    key={conversation.id} 
+                                    className="px-3 py-2 border-t border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                                    onClick={() => handleLoadConversation(conversation.id)}
+                                  >
+                                    <div className="text-xs font-medium text-black truncate">{conversation.title}</div>
+                                    <div className="text-xs text-gray-600">
+                                      {selectedCourseId 
+                                        ? formatDate(conversation.last_message_at)
+                                        : `${conversationCourse ? conversationCourse.courseCode : 'General'} • ${formatDate(conversation.last_message_at)}`
+                                      }
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Loading Message */}
                 {showLoadingMessage && canvasData && (
@@ -590,118 +668,134 @@ export default function Sidebar({
                   </select>
                 </div>
 
-                {/* Recording Controls Section - Always show */}
-                <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-black">🎥 Lecture Recording</span>
-                    {isRecording && (
-                      <div className="flex items-center gap-1">
-                        <div className={`w-2 h-2 rounded-full ${isPaused ? 'bg-yellow-500' : 'bg-red-500'} animate-pulse`}></div>
-                        <span className="text-xs text-black">{isPaused ? 'Paused' : 'Recording'}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Duration and Time Remaining */}
-                  {isRecording && (
-                    <div className="mb-2 text-xs text-gray-600 space-y-1">
-                      <div>Duration: {formatDuration(duration)}</div>
-                      <div>{formatTimeRemaining(duration)}</div>
-                      <div className="w-full bg-gray-200 rounded-full h-1">
-                        <div 
-                          className="bg-red-500 h-1 rounded-full transition-all duration-1000" 
-                          style={{ width: `${(duration / MAX_RECORDING_SECONDS) * 100}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Recording Controls */}
-                  <div className="flex items-center gap-2 mb-2">
-                    {!isRecording ? (
-                      <button
-                        onClick={handleStartRecording}
-                        disabled={isProcessing || !selectedCourseId}
-                        className="bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
-                        title={!selectedCourseId ? "Select a course to start recording" : "Start Recording"}
-                      >
-                        {isProcessing ? '⏳ Processing...' : '● Record'}
-                      </button>
-                    ) : (
-                      <>
-                        <button
-                          onClick={handlePauseRecording}
-                          className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
-                          title={isPaused ? "Resume Recording" : "Pause Recording"}
-                        >
-                          {isPaused ? '▶ Resume' : '⏸ Pause'}
-                        </button>
-                        <button
-                          onClick={handleStopRecording}
-                          className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
-                          title="Stop Recording"
-                        >
-                          ⏹ Stop
-                        </button>
-                      </>
-                    )}
-                  </div>
-
-                  {!selectedCourseId && (
-                    <div className="text-xs text-gray-600 mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
-                      Select a course above to start recording
-                    </div>
-                  )}
-
-                  {/* Recording Error */}
-                  {recordingError && (
-                    <div className="text-xs text-red-600 mb-2 p-2 bg-red-50 border border-red-200 rounded">
-                      {recordingError}
-                    </div>
-                  )}
-
-                  {/* Recording History */}
-                  <div className="border-t border-gray-300 pt-2">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-medium text-gray-700">
-                        {selectedCourseId ? 'Course Recordings' : 'All Recordings'}
-                      </span>
-                      {loadingRecordings && (
-                        <div className="text-xs text-gray-500">Loading...</div>
+                {/* Recording Controls Section - Collapsible */}
+                <div className="border border-gray-200 rounded-lg">
+                  <div
+                    className={`px-3 py-2 cursor-pointer flex justify-between items-center transition-colors ${
+                      collapsedSections.recordings ? 'bg-gray-50 hover:bg-gray-100' : 'bg-gray-100'
+                    }`}
+                    onClick={() => toggleSection('recordings')}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-black">🎥</span>
+                      <span className="text-sm font-medium text-black">Lecture Recording</span>
+                      {isRecording && (
+                        <div className="flex items-center gap-1">
+                          <div className={`w-2 h-2 rounded-full ${isPaused ? 'bg-yellow-500' : 'bg-red-500'} animate-pulse`}></div>
+                          <span className="text-xs text-black">{isPaused ? 'Paused' : 'Recording'}</span>
+                        </div>
                       )}
                     </div>
-                    
-                    <div className="max-h-32 overflow-y-auto space-y-1">
-                      {recordings.length === 0 ? (
-                        <div className="text-xs text-gray-500 italic">No recordings yet</div>
-                      ) : (
-                        recordings.slice(0, 5).map((recording) => (
-                          <div 
-                            key={recording.id} 
-                            className="bg-white p-2 rounded border text-xs cursor-pointer hover:bg-blue-50 transition-colors"
-                            onClick={() => openRecording(recording)}
-                            title={recording.summary ? `Click to view summary: ${recording.summary.substring(0, 100)}...` : 'Processing...'}
-                          >
-                            <div className="font-medium text-gray-800 truncate">
-                              {recording.title}
-                            </div>
-                            <div className="text-gray-500 flex justify-between items-center">
-                              <span>{formatDuration(recording.duration || 0)}</span>
-                              <span className={`px-1 py-0.5 rounded text-xs ${
-                                recording.status === 'completed' 
-                                  ? 'bg-green-100 text-green-700' 
-                                  : recording.status === 'failed'
-                                  ? 'bg-red-100 text-red-700'
-                                  : 'bg-yellow-100 text-yellow-700'
-                              }`}>
-                                {recording.status}
-                              </span>
-                            </div>
+                    <span className={`transform transition-transform text-black text-xs ${
+                      collapsedSections.recordings ? '' : 'rotate-180'
+                    }`}>
+                      ▼
+                    </span>
+                  </div>
+                  {!collapsedSections.recordings && (
+                    <div className="p-3 bg-gray-50">
+                      {/* Duration and Time Remaining */}
+                      {isRecording && (
+                        <div className="mb-2 text-xs text-gray-600 space-y-1">
+                          <div>Duration: {formatDuration(duration)}</div>
+                          <div>{formatTimeRemaining(duration)}</div>
+                          <div className="w-full bg-gray-200 rounded-full h-1">
+                            <div 
+                              className="bg-red-500 h-1 rounded-full transition-all duration-1000" 
+                              style={{ width: `${(duration / MAX_RECORDING_SECONDS) * 100}%` }}
+                            ></div>
                           </div>
-                        ))
+                        </div>
                       )}
+
+                      {/* Recording Controls */}
+                      <div className="flex items-center gap-2 mb-2">
+                        {!isRecording ? (
+                          <button
+                            onClick={handleStartRecording}
+                            disabled={isProcessing || !selectedCourseId}
+                            className="bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
+                            title={!selectedCourseId ? "Select a course to start recording" : "Start Recording"}
+                          >
+                            {isProcessing ? '⏳ Processing...' : '● Record'}
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              onClick={handlePauseRecording}
+                              className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
+                              title={isPaused ? "Resume Recording" : "Pause Recording"}
+                            >
+                              {isPaused ? '▶ Resume' : '⏸ Pause'}
+                            </button>
+                            <button
+                              onClick={handleStopRecording}
+                              className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
+                              title="Stop Recording"
+                            >
+                              ⏹ Stop
+                            </button>
+                          </>
+                        )}
+                      </div>
+
+                      {!selectedCourseId && (
+                        <div className="text-xs text-gray-600 mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                          Select a course above to start recording
+                        </div>
+                      )}
+
+                      {/* Recording Error */}
+                      {recordingError && (
+                        <div className="text-xs text-red-600 mb-2 p-2 bg-red-50 border border-red-200 rounded">
+                          {recordingError}
+                        </div>
+                      )}
+
+                      {/* Recording History */}
+                      <div className="border-t border-gray-300 pt-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-medium text-gray-700">
+                            {selectedCourseId ? 'Course Recordings' : 'All Recordings'}
+                          </span>
+                          {loadingRecordings && (
+                            <div className="text-xs text-gray-500">Loading...</div>
+                          )}
+                        </div>
+                        
+                        <div className="max-h-32 overflow-y-auto space-y-1">
+                          {recordings.length === 0 ? (
+                            <div className="text-xs text-gray-500 italic">No recordings yet</div>
+                          ) : (
+                            recordings.slice(0, 5).map((recording) => (
+                              <div 
+                                key={recording.id} 
+                                className="bg-white p-2 rounded border text-xs cursor-pointer hover:bg-blue-50 transition-colors"
+                                onClick={() => openRecording(recording)}
+                                title={recording.summary ? `Click to view summary: ${recording.summary.substring(0, 100)}...` : 'Processing...'}
+                              >
+                                <div className="font-medium text-gray-800 truncate">
+                                  {recording.title}
+                                </div>
+                                <div className="text-gray-500 flex justify-between items-center">
+                                  <span>{formatDuration(recording.duration || 0)}</span>
+                                  <span className={`px-1 py-0.5 rounded text-xs ${
+                                    recording.status === 'completed' 
+                                      ? 'bg-green-100 text-green-700' 
+                                      : recording.status === 'failed'
+                                      ? 'bg-red-100 text-red-700'
+                                      : 'bg-yellow-100 text-yellow-700'
+                                  }`}>
+                                    {recording.status}
+                                  </span>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Course Sections - Only show when course is selected */}
@@ -743,20 +837,12 @@ export default function Sidebar({
                               <div 
                                 key={assignment.id} 
                                 className="px-3 py-2 border-t border-gray-100 hover:bg-gray-50 cursor-pointer"
-                                onClick={() => toggleExpanded('assignment', assignment.id)}
+                                onClick={() => openAssignment(assignment)}
                               >
                                 <div className="text-xs font-medium text-black truncate">{assignment.name}</div>
                                 <div className="text-xs text-black">
                                   {assignment.due_at ? `Due: ${formatDate(assignment.due_at)}` : 'No due date'}
                                 </div>
-                                {expandedItems[`assignment-${assignment.id}`] && assignment.description && (
-                                  <div className="mt-2 p-2 bg-white rounded border text-xs">
-                                    <div 
-                                      className="prose prose-xs max-w-none"
-                                      dangerouslySetInnerHTML={{ __html: assignment.description }}
-                                    />
-                                  </div>
-                                )}
                               </div>
                             ))
                           )}
@@ -796,20 +882,12 @@ export default function Sidebar({
                               <div 
                                 key={announcement.id} 
                                 className="px-3 py-2 border-t border-gray-100 hover:bg-gray-50 cursor-pointer"
-                                onClick={() => toggleExpanded('announcement', announcement.id)}
+                                onClick={() => openAnnouncement(announcement)}
                               >
                                 <div className="text-xs font-medium text-black truncate">{announcement.title}</div>
                                 <div className="text-xs text-black">
                                   Posted: {formatDate(announcement.posted_at)}
                                 </div>
-                                {expandedItems[`announcement-${announcement.id}`] && announcement.message && (
-                                  <div className="mt-2 p-2 bg-white rounded border text-xs">
-                                    <div 
-                                      className="prose prose-xs max-w-none"
-                                      dangerouslySetInnerHTML={{ __html: announcement.message }}
-                                    />
-                                  </div>
-                                )}
                               </div>
                             ))
                           )}
@@ -871,117 +949,7 @@ export default function Sidebar({
                   </div>
                 )}
 
-                {/* Chat Section */}
-                {isAuthenticated && isConnected && (
-                  <div className="space-y-2 pt-4 border-t border-gray-200">
-                    <div className="text-xs font-medium text-black uppercase tracking-wide">
-                      💬 Chat Assistant
-                    </div>
 
-                    {/* New Chat Button */}
-                    <button
-                      onClick={handleNewChat}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
-                    >
-                      <span>💬</span>
-                      New Chat
-                    </button>
-
-                    {/* Recent Conversations */}
-                    {conversations.length > 0 && (
-                      <div className="border border-gray-200 rounded-lg">
-                        <div
-                          className={`px-3 py-2 cursor-pointer flex justify-between items-center transition-colors ${
-                            collapsedChatSections.conversations ? 'bg-gray-50 hover:bg-gray-100' : 'bg-gray-100'
-                          }`}
-                          onClick={() => toggleChatSection('conversations')}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-black">📚</span>
-                            <span className="text-sm font-medium text-black">Recent Chats</span>
-                            <span className="bg-purple-500 text-white rounded-full px-2 py-0.5 text-xs font-medium">
-                              {conversations.length}
-                            </span>
-                          </div>
-                          <span className={`transform transition-transform text-black text-xs ${
-                            collapsedChatSections.conversations ? '' : 'rotate-180'
-                          }`}>
-                            ▼
-                          </span>
-                        </div>
-                        {!collapsedChatSections.conversations && (
-                          <div className="max-h-48 overflow-y-auto">
-                            {loadingConversations ? (
-                              <div className="text-center py-4 text-black text-xs">
-                                Loading conversations...
-                              </div>
-                            ) : (
-                              conversations.slice(0, 10).map(conversation => {
-                                const conversationCourse = canvasData?.courses.find(course => course.id === conversation.course_id);
-                                return (
-                                  <div 
-                                    key={conversation.id} 
-                                    className="px-3 py-2 border-t border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
-                                    onClick={() => handleLoadConversation(conversation.id)}
-                                  >
-                                    <div className="text-xs font-medium text-black truncate">{conversation.title}</div>
-                                    <div className="text-xs text-gray-600">
-                                      {conversationCourse ? `${conversationCourse.courseCode}` : 'General'} • {formatDate(conversation.last_message_at)}
-                                    </div>
-                                  </div>
-                                );
-                              })
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Course-specific conversations if a course is selected */}
-                    {selectedCourse && conversations.filter(c => c.course_id === selectedCourseId).length > 0 && (
-                      <div className="border border-gray-200 rounded-lg">
-                        <div
-                          className={`px-3 py-2 cursor-pointer flex justify-between items-center transition-colors ${
-                            collapsedChatSections.courseChats ? 'bg-gray-50 hover:bg-gray-100' : 'bg-gray-100'
-                          }`}
-                          onClick={() => toggleChatSection('courseChats')}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-black">🎓</span>
-                            <span className="text-sm font-medium text-black">{selectedCourse.courseCode} Chats</span>
-                            <span className="bg-green-500 text-white rounded-full px-2 py-0.5 text-xs font-medium">
-                              {conversations.filter(c => c.course_id === selectedCourseId).length}
-                            </span>
-                          </div>
-                          <span className={`transform transition-transform text-black text-xs ${
-                            collapsedChatSections.courseChats ? '' : 'rotate-180'
-                          }`}>
-                            ▼
-                          </span>
-                        </div>
-                        {!collapsedChatSections.courseChats && (
-                          <div className="max-h-48 overflow-y-auto">
-                            {conversations
-                              .filter(c => c.course_id === selectedCourseId)
-                              .slice(0, 10)
-                              .map(conversation => (
-                                <div 
-                                  key={conversation.id} 
-                                  className="px-3 py-2 border-t border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
-                                  onClick={() => handleLoadConversation(conversation.id)}
-                                >
-                                  <div className="text-xs font-medium text-black truncate">{conversation.title}</div>
-                                  <div className="text-xs text-gray-600">
-                                    {formatDate(conversation.last_message_at)}
-                                  </div>
-                                </div>
-                              ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             )}
 

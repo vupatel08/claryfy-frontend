@@ -69,7 +69,7 @@ export default function RecordingViewer({ recording, onClose }: RecordingViewerP
   };
 
   return (
-    <div className="h-screen bg-white border-r border-gray-200 flex flex-col">
+    <div className="h-screen w-full bg-white border-r border-gray-200 flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-purple-50">
         <div className="flex items-center gap-3">
