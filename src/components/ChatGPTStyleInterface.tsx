@@ -7,6 +7,9 @@ import RecentContent from './RecentContent';
 import { AuthService, ConversationService } from '../services/supabase';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { 
   MessageSquare, 
   ChevronLeft, 
@@ -46,12 +49,15 @@ import {
 interface Message {
   id: string;
   content: string;
-  sender: 'user' | 'ai';
+  sender: 'user' | 'ai' | 'system';
   timestamp: Date;
   file?: {
     name: string;
     size: number;
     type: string;
+  };
+  metadata?: {
+    sources: { title: string; type: string }[];
   };
 }
 
@@ -132,6 +138,7 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollableContainerRef = useRef<HTMLDivElement>(null);
   const [isClient, setIsClient] = useState(false);
+  const lastScrollPositionRef = useRef(0);
   
 
 
@@ -140,6 +147,21 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
     setIsClient(true);
     loadCurrentUser();
   }, []);
+
+  // Save scroll position before input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (scrollableContainerRef.current) {
+      lastScrollPositionRef.current = scrollableContainerRef.current.scrollTop;
+    }
+    setInputValue(e.target.value);
+  };
+
+  // Restore scroll position after input changes
+  useEffect(() => {
+    if (scrollableContainerRef.current && lastScrollPositionRef.current) {
+      scrollableContainerRef.current.scrollTop = lastScrollPositionRef.current;
+    }
+  }, [inputValue]);
 
   // Expose methods to parent component via ref
   useImperativeHandle(ref, () => ({
@@ -244,12 +266,18 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
     
     const container = scrollableContainerRef.current;
     const { scrollTop, scrollHeight, clientHeight } = container;
-    const isNearBottom = scrollTop + clientHeight >= scrollHeight - 50; // Within 50px of bottom
+    const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100; // Within 100px of bottom
     
-    // Only auto-scroll if user is near the bottom (respects manual scrolling)
+    // Only auto-scroll if user is near the bottom
     if (isNearBottom) {
-      // Smooth scroll to bottom during streaming
-      container.scrollTop = scrollHeight - clientHeight;
+      requestAnimationFrame(() => {
+        if (container) {
+          container.scrollTo({
+            top: scrollHeight - clientHeight,
+            behavior: 'instant' // Use instant instead of smooth to prevent jumping
+          });
+        }
+      });
     }
   };
 
@@ -263,124 +291,172 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
     if (messages.length > prevMessageCountRef.current) {
       prevMessageCountRef.current = messages.length;
       // Smooth scroll for new messages
-      setTimeout(() => scrollToBottom(true), 0);
+      requestAnimationFrame(() => scrollToBottom(true));
     }
   }, [messages.length, isChatMode]);
 
   // Separate effect for streaming content updates (same message, changing content)
   useEffect(() => {
     if (isTyping && isChatMode && messages.length > 0) {
-      // During streaming: gentle auto-scroll if user is near bottom
-      // Use a small delay to avoid too frequent scrolling
-      const timer = setTimeout(() => {
-        autoScroll();
-      }, 100);
-      
-      return () => clearTimeout(timer);
+      // During streaming: instant auto-scroll if user is near bottom
+      autoScroll();
     }
   }, [messages, isTyping, isChatMode]);
 
 
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim() && !selectedFile) return;
-    if (!isClient) return;
-
-    // Switch to chat mode
-    setIsChatMode(true);
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: inputValue,
-      sender: 'user',
-      timestamp: new Date(),
-      file: selectedFile ? {
-        name: selectedFile.name,
-        size: selectedFile.size,
-        type: selectedFile.type,
-      } : undefined,
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    const messageContent = inputValue; // Store before clearing
-    setInputValue('');
-    setSelectedFile(null);
-
+  // Handle message send
+  const handleSendMessage = async (messageContent: string) => {
     try {
-      // Get current user for userId
-      const user = await AuthService.getCurrentUser();
-      if (!user) {
-        throw new Error('User not authenticated. Please sign in to chat.');
-      }
+        const user = await AuthService.getCurrentUser();
+        if (!user) {
+            throw new Error('User not authenticated. Please sign in to chat.');
+        }
 
-      setIsTyping(true);
-      
-      // Call backend RAG-enabled chat API with streaming
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: messageContent,
-          userId: user.id,
-          courseId: selectedCourseId,
-          conversationId: currentConversationId
-        }),
-      });
+        if (!selectedCourse && !messageContent.toLowerCase().includes('help')) {
+            setMessages(prev => [...prev, {
+                id: Date.now().toString(),
+                content: 'Please select a course first to get course-specific help, or ask for general help.',
+                sender: 'system',
+                timestamp: new Date(),
+            }]);
+            return;
+        }
 
-      if (!response.ok) {
-        throw new Error('Failed to get response from AI');
-      }
+        setIsTyping(true);
+        setIsChatMode(true);
 
-      // Handle streaming response
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('No response body');
-      }
+        // Save current scroll position
+        const currentScrollTop = scrollableContainerRef.current?.scrollTop || 0;
+        const currentScrollHeight = scrollableContainerRef.current?.scrollHeight || 0;
+        const currentClientHeight = scrollableContainerRef.current?.clientHeight || 0;
+        const wasAtBottom = currentScrollTop + currentClientHeight >= currentScrollHeight - 100;
 
-      let aiResponse = '';
-      const aiMessageId = (Date.now() + 1).toString();
+        // Add user message immediately
+        const userMessageId = Date.now().toString();
+        setMessages(prev => [...prev, {
+            id: userMessageId,
+            content: messageContent,
+            sender: 'user',
+            timestamp: new Date(),
+        }]);
 
-      // Add initial AI message
-      setMessages(prev => [...prev, {
-        id: aiMessageId,
-        content: '',
-        sender: 'ai',
-        timestamp: new Date(),
-      }]);
+        // Add initial AI message
+        const aiMessageId = (Date.now() + 1).toString();
+        setMessages(prev => [...prev, {
+            id: aiMessageId,
+            content: '',
+            sender: 'ai',
+            timestamp: new Date(),
+        }]);
 
-      // Read stream (plain text response, not SSE)
-      const decoder = new TextDecoder();
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value);
-        aiResponse += chunk;
-        
-        // Update AI message content
-        setMessages(prev => prev.map(msg => 
-          msg.id === aiMessageId 
-            ? { ...msg, content: aiResponse }
-            : msg
-        ));
-      }
-
+        // Use streaming if supported
+        let isStreaming = true;
+        let aiContent = '';
+        let sources: any[] = [];
+        try {
+            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/chat`;
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: messageContent,
+                    userId: user.id,
+                    courseId: selectedCourse?.id || null,
+                    stream: true
+                })
+            });
+            if (!response.body) throw new Error('No response body for streaming');
+            const reader = response.body.getReader();
+            let decoder = new TextDecoder();
+            let done = false;
+            while (!done) {
+                const { value, done: doneReading } = await reader.read();
+                done = doneReading;
+                if (value) {
+                    const chunkStr = decoder.decode(value, { stream: true });
+                    // Parse SSE data: data: { chunk: { ... } }\n\n
+                    chunkStr.split('\n').forEach(line => {
+                        if (line.startsWith('data:')) {
+                            try {
+                                const data = JSON.parse(line.replace('data:', '').trim());
+                                if (data.chunk && data.chunk.choices && data.chunk.choices[0].delta && data.chunk.choices[0].delta.content) {
+                                    aiContent += data.chunk.choices[0].delta.content;
+                                    // Update message content while preserving scroll position
+                                    setMessages(prev => {
+                                        const newMessages = prev.map(msg =>
+                                            msg.id === aiMessageId ? { ...msg, content: aiContent } : msg
+                                        );
+                                        
+                                        // After state update, restore scroll position if user wasn't at bottom
+                                        requestAnimationFrame(() => {
+                                            if (scrollableContainerRef.current) {
+                                                if (!wasAtBottom) {
+                                                    scrollableContainerRef.current.scrollTop = currentScrollTop;
+                                                } else {
+                                                    // If user was at bottom, keep them at bottom
+                                                    const container = scrollableContainerRef.current;
+                                                    container.scrollTop = container.scrollHeight - container.clientHeight;
+                                                }
+                                            }
+                                        });
+                                        
+                                        return newMessages;
+                                    });
+                                }
+                            } catch (err) { /* ignore parse errors */ }
+                        }
+                    });
+                }
+            }
+            // After stream, fetch sources with a non-streaming call
+            const sourcesResp = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: messageContent,
+                    userId: user.id,
+                    courseId: selectedCourse?.id || null,
+                    stream: false
+                })
+            });
+            const sourcesData = await sourcesResp.json();
+            sources = sourcesData.sources || [];
+            setMessages(prev => prev.map(msg =>
+                msg.id === aiMessageId ? { ...msg, content: aiContent, metadata: { sources } } : msg
+            ));
+        } catch (err) {
+            isStreaming = false;
+            // Fallback to non-streaming if streaming fails
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: messageContent,
+                    userId: user.id,
+                    courseId: selectedCourse?.id || null
+                })
+            });
+            if (!response.ok) {
+                throw new Error('Failed to get response from AI');
+            }
+            const data = await response.json();
+            setMessages(prev => prev.map(msg =>
+                msg.id === aiMessageId ? { ...msg, content: data.response, metadata: { sources: data.sources } } : msg
+            ));
+        }
     } catch (error) {
-      console.error('Error sending message:', error);
-      
-      // Add error message
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        content: 'Sorry, I encountered an error while processing your message. Please try again.',
-        sender: 'ai',
-        timestamp: new Date(),
-      }]);
+        console.error('Error in chat:', error);
+        setMessages(prev => [...prev, {
+            id: Date.now().toString(),
+            content: 'Sorry, there was an error processing your message. Please try again.',
+            sender: 'system',
+            timestamp: new Date(),
+        }]);
     }
-
     setIsTyping(false);
-  };
+    setInputValue('');
+};
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -396,7 +472,6 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
 
   // Start new chat
   const startNewChat = () => {
-    setCurrentConversationId(null);
     setMessages([]);
     setIsChatMode(true);
   };
@@ -453,7 +528,7 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
                   }
                 }}
               >
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-primary">Choose a Course</h3>
                   <div className="text-accent">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -461,8 +536,14 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
                     </svg>
                   </div>
                 </div>
-                <div className="text-xs text-secondary bg-muted px-3 py-2 rounded-lg">
-                  Available Courses: {canvasData?.courses.length || 0}
+                <div className="space-y-3">
+                  <div className="text-xs text-secondary bg-muted px-3 py-2 rounded-lg">
+                    Available Courses: {canvasData?.courses.length || 0}
+                  </div>
+                  <div className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium text-success border border-success/20 transition-colors hover:bg-success/10 cursor-pointer">
+                    <CheckCircle className="w-3 h-3 mr-1.5" />
+                    Connected to Canvas
+                  </div>
                 </div>
               </div>
             )}
@@ -615,30 +696,29 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
           ) : (
             <div className="text-center">
               <h2 className="text-xl font-semibold text-primary mb-2">
-                Welcome to Claryfy
+                General Help
               </h2>
               <p className="text-secondary text-sm">
-                {!isConnected 
-                  ? "Get your Canvas content loaded up and select a course to start chatting" 
-                  : "Select a course from the sidebar to get specific assistance"
-                }
+                Ask for help or select a course for course-specific assistance
               </p>
-              {viewingFile && (
-                <div className="mt-2 text-sm text-primary bg-accent/10 border border-accent/20 px-3 py-1 rounded-full inline-block">
-                  Currently viewing: {viewingFile.display_name}
-                </div>
-              )}
             </div>
           )}
-
-
         </div>
       </div>
 
-      {/* Messages Area (scrollable) */}
+      {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-6" ref={scrollableContainerRef}>
         <div className="max-w-4xl mx-auto space-y-4">
-          {/* Messages in normal order (oldest first, newest last) */}
+          {messages.length === 0 && (
+            <div className="text-center text-secondary">
+              <p>Start a conversation by typing a message below.</p>
+              {!selectedCourse && (
+                <p className="mt-2 text-sm">
+                  Select a course from the sidebar for course-specific help, or ask a general question.
+                </p>
+              )}
+            </div>
+          )}
           {messages.map((message) => (
             <div
               key={message.id}
@@ -668,7 +748,8 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
                   ) : (
                     <div className="prose prose-sm max-w-none">
                       <ReactMarkdown 
-                        remarkPlugins={[remarkGfm]}
+                        remarkPlugins={[remarkGfm, remarkMath]}
+                        rehypePlugins={[rehypeKatex]}
                         components={{
                           // Custom styling for markdown elements
                           h1: ({children}) => <h1 className="text-lg font-bold mb-3 mt-4">{children}</h1>,
@@ -678,16 +759,28 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
                           ul: ({children}) => <ul className="list-disc list-inside mb-3 space-y-1">{children}</ul>,
                           ol: ({children}) => <ol className="list-decimal list-inside mb-3 space-y-1">{children}</ol>,
                           li: ({children}) => <li className="mb-0.5">{children}</li>,
-                          code: ({children, className}) => (
-                            <code className={`bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono ${className || ''}`}>
-                              {children}
-                            </code>
-                          ),
-                          pre: ({children}) => (
-                            <pre className="bg-gray-100 p-3 rounded-lg text-xs overflow-x-auto mb-3 font-mono leading-relaxed">
-                              {children}
-                            </pre>
-                          ),
+                          code: (props: any) => {
+                            const {className, children} = props;
+                            const match = /language-(\w+)/.exec(className || '');
+                            const isMath = className === 'math';
+                            
+                            if (isMath) {
+                              return <span className="katex-block my-4">{children}</span>;
+                            }
+                            
+                            return (
+                              <code
+                                className={`${match ? 'block' : 'inline'} ${
+                                  match 
+                                    ? 'bg-gray-800 text-white px-4 py-3 rounded-lg text-sm font-mono leading-relaxed overflow-x-auto mb-3 w-full block' 
+                                    : 'bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono'
+                                } ${className || ''}`}
+                              >
+                                {children}
+                              </code>
+                            );
+                          },
+                          pre: ({children}) => <pre className="bg-transparent p-0 overflow-x-auto mb-3 font-mono leading-relaxed">{children}</pre>,
                           blockquote: ({children}) => (
                             <blockquote className="border-l-4 border-gray-300 pl-4 italic mb-3 py-1 bg-gray-50 rounded-r">
                               {children}
@@ -717,6 +810,18 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
                     </div>
                   )}
                 </div>
+                {message.sender === 'ai' && message.metadata?.sources && message.metadata.sources.length > 0 && (
+                  <div className="mt-2 text-xs text-gray-500">
+                    <span className="font-semibold">Sources:</span>
+                    <ul className="list-disc list-inside ml-4">
+                      {message.metadata.sources.map((source: any, idx: number) => (
+                        <li key={idx}>
+                          {source.title} <span className="text-gray-400">({source.type})</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -786,11 +891,14 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
               <div className="relative">
                 <textarea
                   value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
+                  onChange={handleInputChange}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
-                      handleSendMessage();
+                      if (scrollableContainerRef.current) {
+                        lastScrollPositionRef.current = scrollableContainerRef.current.scrollTop;
+                      }
+                      handleSendMessage(inputValue);
                     }
                   }}
                   placeholder={
@@ -807,7 +915,7 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
                   }}
                 />
                 <button
-                  onClick={handleSendMessage}
+                  onClick={() => handleSendMessage(inputValue)}
                   disabled={!inputValue.trim() && !selectedFile}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-white hover:bg-gray-50 disabled:bg-muted disabled:cursor-not-allowed text-black w-8 h-8 rounded-full transition-all flex items-center justify-center shadow-sm border border-gray-300"
                   title="Send message"

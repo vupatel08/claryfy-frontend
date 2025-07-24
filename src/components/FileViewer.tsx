@@ -2,7 +2,8 @@
 
 import { File } from '../types/canvas';
 import { useState, useEffect } from 'react';
-import { FileText, Download, ExternalLink, X, FileImage, FileArchive, FileCode, FileSpreadsheet, Presentation, FileVideo, FileAudio } from 'lucide-react';
+import { FileText, Download, ExternalLink, X, FileImage, FileArchive, FileCode, FileSpreadsheet, Presentation, FileVideo, FileAudio, Bot } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface FileViewerProps {
   file: File;
@@ -10,8 +11,11 @@ interface FileViewerProps {
 }
 
 export default function FileViewer({ file, onClose }: FileViewerProps) {
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isVectorizing, setIsVectorizing] = useState(false);
+  const [vectorizeStatus, setVectorizeStatus] = useState<'idle' | 'success' | 'error'>('idle');
   
   // Use backend file serving URL
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
@@ -19,6 +23,51 @@ export default function FileViewer({ file, onClose }: FileViewerProps) {
   const backendFileUrl = `${API_URL}/api/files/serve/${file.id}`;
   const fallbackUrl = file.url || file.preview_url;
   
+  const handleVectorize = async () => {
+    if (!user) return;
+    
+    setIsVectorizing(true);
+    setVectorizeStatus('idle');
+    
+    try {
+        const response = await fetch(`${API_URL}/api/weaviate/vectorize/file`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: user.id,
+                file: file
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to vectorize file');
+        }
+
+        const data = await response.json();
+        
+        if (data.success) {
+            setVectorizeStatus('success');
+            // Show success message with additional info if available
+            if (data.extractedContent) {
+                console.log('Successfully extracted and vectorized file content');
+            }
+            // Handle Query Agent response data if needed
+            if (data.vectorized?.finalAnswer) {
+                console.log('Query Agent response:', data.vectorized.finalAnswer);
+            }
+        } else {
+            throw new Error(data.error || 'Vectorization failed');
+        }
+    } catch (error) {
+        console.error('Error vectorizing file:', error);
+        setVectorizeStatus('error');
+    } finally {
+        setIsVectorizing(false);
+    }
+};
+
   // Check if file is available
   useEffect(() => {
     const checkFile = async () => {
@@ -216,6 +265,33 @@ export default function FileViewer({ file, onClose }: FileViewerProps) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Vectorize Button */}
+          <button
+            onClick={handleVectorize}
+            disabled={isVectorizing}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors text-xs font-medium ${
+              isVectorizing 
+                ? 'bg-gray-400 cursor-wait' 
+                : vectorizeStatus === 'success'
+                ? 'bg-green-600 text-white'
+                : vectorizeStatus === 'error'
+                ? 'bg-red-600 text-white'
+                : 'bg-gray-600 text-white hover:bg-gray-700'
+            }`}
+          >
+            <Bot className="w-3 h-3" />
+            <span>
+              {isVectorizing 
+                ? 'Vectorizing...' 
+                : vectorizeStatus === 'success'
+                ? 'Vectorized!'
+                : vectorizeStatus === 'error'
+                ? 'Failed'
+                : 'Vectorize'
+              }
+            </span>
+          </button>
+
           {(isPDF() || isOfficeDocument()) && (
             <a
               href={backendFileUrl}
@@ -235,6 +311,18 @@ export default function FileViewer({ file, onClose }: FileViewerProps) {
           </button>
         </div>
       </div>
+
+      {/* Status Messages */}
+      {vectorizeStatus === 'success' && (
+        <div className="px-4 py-2 bg-green-50 border-b border-green-100 text-green-700 text-xs">
+          File has been vectorized and can now be searched using the chat interface.
+        </div>
+      )}
+      {vectorizeStatus === 'error' && (
+        <div className="px-4 py-2 bg-red-50 border-b border-red-100 text-red-700 text-xs">
+          Failed to vectorize file. Please try again or contact support if the issue persists.
+        </div>
+      )}
 
       {/* File Content */}
       <div className="flex-1">

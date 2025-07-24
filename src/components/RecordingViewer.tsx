@@ -14,6 +14,7 @@ interface Recording {
   status: string;
   created_at: string;
   course_id?: number;
+  verified?: boolean;
 }
 
 interface RecordingViewerProps {
@@ -140,9 +141,17 @@ export default function RecordingViewer({ recording, onClose }: RecordingViewerP
             {/* Status Badge */}
             <div className="flex items-center gap-3">
               <span className="text-sm font-medium text-primary">Status:</span>
-              <div className={`px-3 py-1.5 rounded-full text-xs font-medium border flex items-center gap-2 ${getStatusColor(displayRecording.status)}`}>
-                {getStatusIcon(displayRecording.status)}
-                {displayRecording.status}
+              <div className="flex items-center gap-2">
+                <div className={`px-3 py-1.5 rounded-full text-xs font-medium border flex items-center gap-2 ${getStatusColor(displayRecording.status)}`}>
+                  {getStatusIcon(displayRecording.status)}
+                  {displayRecording.status}
+                </div>
+                {displayRecording.verified && (
+                  <div className="px-3 py-1.5 rounded-full text-xs font-medium bg-success/10 text-success border border-success/20 flex items-center gap-2">
+                    <CheckCircle className="w-3 h-3" />
+                    Verified
+                  </div>
+                )}
               </div>
             </div>
 
