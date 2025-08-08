@@ -313,6 +313,18 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
             throw new Error('User not authenticated. Please sign in to chat.');
         }
 
+        // Capture current file before clearing
+        const currentFile = selectedFile;
+        
+        // Clear input and file immediately when send is clicked
+        setInputValue('');
+        setSelectedFile(null);
+
+        // Check if we have a file upload with OCR flow
+        if (currentFile && messageContent.trim()) {
+            return await handleFileUploadWithQuery(messageContent, user, currentFile);
+        }
+
         if (!selectedCourse && !messageContent.toLowerCase().includes('help')) {
             setMessages(prev => [...prev, {
                 id: Date.now().toString(),
@@ -455,8 +467,113 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
         }]);
     }
     setIsTyping(false);
-    setInputValue('');
-};
+  };
+
+  // Handle file upload with OCR processing
+  const handleFileUploadWithQuery = async (query: string, user: any, fileToUpload: globalThis.File) => {
+    if (!fileToUpload) return;
+
+    let processingMessageId = '';
+    
+    try {
+        setIsTyping(true);
+        setIsChatMode(true);
+
+        // Add user message with file info
+        const userMessageId = Date.now().toString();
+        setMessages(prev => [...prev, {
+            id: userMessageId,
+            content: `📎 **Uploaded:** ${fileToUpload.name}\n**Question:** ${query}`,
+            sender: 'user',
+            timestamp: new Date(),
+            file: {
+                name: fileToUpload.name,
+                size: fileToUpload.size,
+                type: fileToUpload.type
+            }
+        }]);
+
+        // Add processing message
+        processingMessageId = (Date.now() + 1).toString();
+        setMessages(prev => [...prev, {
+            id: processingMessageId,
+            content: '🔍 Processing file and extracting text...',
+            sender: 'ai',
+            timestamp: new Date(),
+        }]);
+
+        // Create form data for file upload
+        const formData = new FormData();
+        formData.append('file', fileToUpload);
+        formData.append('userId', user.id);
+        formData.append('query', query);
+        if (selectedCourse?.id) {
+            formData.append('courseId', selectedCourse.id.toString());
+        }
+
+        // Send file to backend for OCR processing
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/upload-file`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`File upload failed: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.error || 'File processing failed');
+        }
+
+        // Update processing message with results
+        const fileInfo = data.fileProcessed;
+        let processingDetails = `✅ **File processed successfully!**\n`;
+        processingDetails += `📄 **Type:** ${fileInfo.type}\n`;
+        processingDetails += `📊 **Size:** ${formatFileSize(fileInfo.size)}\n`;
+        
+        if (fileInfo.extractedTextLength > 0) {
+            processingDetails += `📝 **Text extracted:** ${fileInfo.extractedTextLength} characters\n`;
+        }
+        
+        if (fileInfo.confidence) {
+            processingDetails += `🎯 **OCR confidence:** ${Math.round(fileInfo.confidence)}%\n`;
+        }
+        
+        if (fileInfo.pageCount) {
+            processingDetails += `📖 **Pages:** ${fileInfo.pageCount}\n`;
+        }
+
+        processingDetails += `\n**AI Response:**\n${data.response}`;
+
+        setMessages(prev => prev.map(msg =>
+            msg.id === processingMessageId ? {
+                ...msg,
+                content: processingDetails,
+                metadata: { sources: data.sources }
+            } : msg
+        ));
+
+        // Clear file selection (already cleared, but keeping for safety)
+        setSelectedFile(null);
+
+    } catch (error) {
+        console.error('Error in file upload:', error);
+        
+        // Update processing message with error
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        setMessages(prev => prev.map(msg =>
+            msg.id === processingMessageId ? {
+                ...msg,
+                content: `❌ **File processing failed:** ${errorMessage}\n\nPlease try again with a different file or check that the file type is supported.`
+            } : msg
+        ));
+        
+    } finally {
+        setIsTyping(false);
+    }
+  };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -743,14 +860,11 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
                   </div>
                 )}
                 <div className="text-sm prose prose-sm max-w-none">
-                  {message.sender === 'user' ? (
-                    <div className="whitespace-pre-wrap">{message.content}</div>
-                  ) : (
-                    <div className="prose prose-sm max-w-none">
-                      <ReactMarkdown 
-                        remarkPlugins={[remarkGfm, remarkMath]}
-                        rehypePlugins={[rehypeKatex]}
-                        components={{
+                  <div className="prose prose-sm max-w-none">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm, remarkMath]}
+                      rehypePlugins={[rehypeKatex]}
+                      components={{
                           // Custom styling for markdown elements
                           h1: ({children}) => <h1 className="text-lg font-bold mb-3 mt-4">{children}</h1>,
                           h2: ({children}) => <h2 className="text-base font-bold mb-2 mt-3">{children}</h2>,
@@ -808,7 +922,6 @@ const ChatGPTStyleInterface = forwardRef<ChatGPTStyleInterfaceRef, ChatGPTStyleI
                         {message.content}
                       </ReactMarkdown>
                     </div>
-                  )}
                 </div>
                 {message.sender === 'ai' && message.metadata?.sources && message.metadata.sources.length > 0 && (
                   <div className="mt-2 text-xs text-gray-500">

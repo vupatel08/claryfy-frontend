@@ -216,8 +216,13 @@ export default function Sidebar({
 
   // Load user recordings when course is selected
   useEffect(() => {
-    if (isAuthenticated && user && selectedCourseId) {
-      loadUserRecordings();
+    if (isAuthenticated && user) {
+      if (selectedCourseId) {
+        loadUserRecordings();
+      } else {
+        // Clear recordings when no course is selected
+        setUserRecordings([]);
+      }
     }
   }, [isAuthenticated, user, selectedCourseId]);
 
@@ -272,11 +277,11 @@ export default function Sidebar({
   const courseFiles = canvasData?.files.filter(file => file.course_id === selectedCourseId) || [];
 
   const loadUserRecordings = async () => {
-    if (!user || !selectedCourseId) return;
+    if (!user) return;
     
     setLoadingRecordings(true);
     try {
-      const recordingsData = await RecordingService.getUserRecordings(user.id, selectedCourseId);
+      const recordingsData = await RecordingService.getUserRecordings(user.id, selectedCourseId || undefined);
       setUserRecordings(recordingsData);
     } catch (error) {
       console.error('Error loading recordings:', error);
@@ -660,7 +665,7 @@ export default function Sidebar({
                     Lecture Recordings
                   </div>
                   <span className="absolute -top-3 -right-3 bg-warning text-black border border-black rounded-full w-7 h-7 text-xs flex items-center justify-center font-semibold">
-                    {recordings.length}
+                    {userRecordings.length}
                   </span>
                 </button>
               </>
@@ -831,7 +836,7 @@ export default function Sidebar({
                       <Video className="w-4 h-4 text-secondary" />
                       <span className="text-sm font-medium text-primary">Lecture Recording</span>
                       <span className="bg-warning/20 text-warning border border-warning/30 rounded-full px-2 py-0.5 text-xs font-medium">
-                        {recordings.length}
+                        {userRecordings.length}
                       </span>
                       {isRecording && (
                         <div className="flex items-center gap-2">
@@ -941,10 +946,10 @@ export default function Sidebar({
                         </div>
                         
                         <div className="max-h-32 overflow-y-auto space-y-2">
-                          {recordings.length === 0 ? (
+                          {userRecordings.length === 0 ? (
                             <div className="text-xs text-gray-500 italic text-center py-2">No recordings yet</div>
                           ) : (
-                            recordings.slice(0, 5).map((recording) => (
+                            userRecordings.slice(0, 5).map((recording) => (
                               <div 
                                 key={recording.id} 
                                 className={`p-3 rounded-lg cursor-pointer transition-all hover:scale-[1.02] ${
